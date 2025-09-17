@@ -48,6 +48,7 @@ The Moodle core repository should be cloned alongside this repository for refere
 ./                  # This plugin repository
 ```
 
+This way the agent can access Moodle code for reference, if needed.
 
 ## Usage Examples
 
@@ -214,3 +215,13 @@ MoMoPDA automatically detects your plugin type and development context:
 - **Missing guidance?** Check if your plugin type is supported in the list above
 - **Need custom patterns?** The guides include extension points for custom functionality
 - **Your new plugin has bugs?** Fix them and ask your coding agent to improve the patterns files!
+
+### Example prompts
+
+>>>I want to create a question bank (qbank) plugin, which adds a bulk edit functionality to the question bank. The idea is to use the questiongeneration purpose of the ../moodle-local_ai_manager plugin, and the logic of the ../moodle-qbank_questiongen plugin, to attain the following functionality: 1. bulk select which questions to modify 2. add a modification prompt 3. generate new versions of the questions according to the modification prompt. 4. add a prefix to the new questions, so they can be distinguished from the old ones. For example: "Add feedback to all answer options of these questions". MVP would be to add support to the multichoice questions, but create similar architecture to the questiongen plugin so that other question types can be added later. The plugin must be dependent on the local_ai_manager plugin, and it can be dependent on the qbank_questiongen plugin as well, if it makes the implementation simpler.
+
+Notes: This worked, and the resulting plugin is here: https://github.com/wilenius/moodle-qbank_bulk_ai_edit.
+
+>>>This repo has a modular prompt system for developing Moodle plugins. I need to develop a local plugin that adds User overrides to all the quizzes on the course area. To understand User overrides, look at the /home/hwileniu/git/moodle/public/mod/quiz. To understand local plugins, look at ../moodle-local_aiquestions. It needs to be added as a view to the course navigation. MVP: add custom quiz time limit for a user.
+
+Notes: This worked very well. It might be that it makes sense to note that the initial contents of the repo (momopda) and the end product (plugin) are different, but they'll be done in the same repo. Resulting code here: https://github.com/wilenius/moodle-local_course_overrides
