@@ -375,7 +375,7 @@ $form->display();
 - **Extract methods for reusable components** - Keep HTML generation DRY
 - **Use $OUTPUT methods** - Leverage Moodle's built-in UI components
 
-See `.prompts/patterns/html_writer_best_practices.md` for detailed examples.
+See `.prompts/patterns/html_writer.md` for detailed examples.
 
 ## Testing Local Plugins
 

@@ -38,7 +38,8 @@ This repository is a collection of prompts that can be combined in different way
         ├── database.md              # Database operation patterns
         ├── forms.md                 # Moodle forms patterns
         ├── navigation.md            # Navigation integration
-        └── api-usage.md             # Common API usage patterns
+        ├── api-usage.md             # Common API usage patterns
+        └── html_writer.md           # HTML generation best practices
 ```
 ## Moodle Core Repository
 
