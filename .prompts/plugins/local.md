@@ -368,6 +368,15 @@ $form->display();
 - Provide clear feedback
 - Support accessibility
 
+### 6. HTML Generation Best Practices
+- **Use templates for complex structures** - Separate HTML from PHP logic
+- **Use html_table for tabular data** - Don't manually build table HTML
+- **Avoid start_tag/end_tag pairs** - Use single html_writer calls when possible
+- **Extract methods for reusable components** - Keep HTML generation DRY
+- **Use $OUTPUT methods** - Leverage Moodle's built-in UI components
+
+See `.prompts/patterns/html_writer_best_practices.md` for detailed examples.
+
 ## Testing Local Plugins
 
 ### Unit Testing
