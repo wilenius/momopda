@@ -213,6 +213,23 @@ All guides are based on analysis of Moodle 5.x core implementations and follow o
        └── .prompts/
    ```
 
+   **Configure environment variable:**
+
+   The CI tools require the `MOODLE_DIR` environment variable to point to your Moodle core installation:
+
+   ```bash
+   # Add to your ~/.bashrc or ~/.zshrc
+   export MOODLE_DIR=$HOME/git/moodle
+
+   # Or set it for the current session
+   export MOODLE_DIR=/home/$USER/git/moodle
+
+   # Reload your shell configuration
+   source ~/.bashrc  # or source ~/.zshrc
+   ```
+
+   Adjust the path to match your actual Moodle installation location.
+
    **What CI tools provide:**
    - Automated coding standards validation (`codechecker`)
    - PHP syntax checking (`phplint`)
