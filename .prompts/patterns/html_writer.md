@@ -1,5 +1,9 @@
 # HTML Writer Best Practices for Moodle
 
+## ⚠️ STRONG RECOMMENDATION: Avoid html_writer
+
+**Templates should be your default choice for UI generation.** Use html_writer only in exceptional cases.
+
 ## Problem: Error-prone html_writer usage
 
 Many developers use html_writer with manual start_tag/end_tag pairs, leading to:
@@ -7,8 +11,43 @@ Many developers use html_writer with manual start_tag/end_tag pairs, leading to:
 - Mixed business logic with HTML generation
 - Difficult maintenance
 - Poor readability
+- Lack of design system consistency
 
-## Recommended Patterns
+## ✅ PREFERRED: Use Templates with Renderable/Templatable Pattern
+
+**Best practice**: Create renderable/templatable classes for UI components:
+
+```php
+// classes/output/course_overrides.php
+class course_overrides implements renderable, templatable {
+    public function __construct(protected int $courseid) {}
+
+    public function export_for_template(\renderer_base $output): array {
+        $data = [ ... generate template data based on $this->courseid ... ];
+        return $data;
+    }
+}
+```
+
+Then use automatic template discovery:
+```php
+// In your page file
+$courseoverrides = new \local_myplugin\output\course_overrides($courseid);
+echo $OUTPUT->header();
+echo $OUTPUT->render($courseoverrides);
+echo $OUTPUT->footer();
+```
+
+Template file: `course_overrides.mustache` (same name as class)
+
+## ⚠️ When html_writer is Acceptable
+
+**Exception**: `html_writer::link()` is still appropriate for simple links:
+```php
+echo html_writer::link($url, $text, ['class' => 'btn btn-primary']);
+```
+
+## Recommended Patterns (when html_writer is unavoidable)
 
 ### 1. Use html_table for tabular data
 
@@ -181,7 +220,11 @@ echo $OUTPUT->render_from_template('local_myplugin/quiz_list', $templatecontext)
 
 ## When to Use Each Approach
 
-- **Templates**: Complex UI structures, reusable components, card layouts
-- **html_table**: Any tabular data presentation
-- **Single html_writer calls**: Simple wrappers, basic formatting
-- **$OUTPUT methods**: Notifications, standard UI elements, icons
+**Priority order**:
+1. **Templates with renderable/templatable**: ALL complex UI (default choice)
+2. **$OUTPUT methods**: Notifications, standard UI elements, icons
+3. **html_table**: Simple tabular data presentation only
+4. **html_writer::link()**: Simple links only
+5. **Other html_writer calls**: Avoid - use templates instead
+
+**Remember**: Modern Moodle development favors templates for maintainability, accessibility, and design consistency.
