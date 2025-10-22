@@ -11,7 +11,7 @@ This repository is a collection of prompts that can be combined in different way
     ├── core/
     │   ├── base-instructions.md     # Core Moodle development principles
     │   ├── security-checklist.md    # Security requirements
-    │   └── quality-standards.md     # Code quality standards
+    │   └── ci-validation.md         # Automated CI quality checks
     ├── plugins/
     │   ├── block.md                 # Block plugin development guide
     │   ├── enrol.md                 # Enrolment plugin development guide
@@ -181,9 +181,51 @@ All guides are based on analysis of Moodle 5.x core implementations and follow o
        └── .prompts/
    ```
 
-4. **Start your coding agent from the root of the repository**
+4. **Optional but recommended: Install Moodle Plugin CI**
 
-5. **Begin development**
+   MoMoPDA includes automated quality validation using [Moodle Plugin CI](https://github.com/moodlehq/moodle-plugin-ci). The AI agent will automatically use these tools if available to validate code quality before completing tasks.
+
+   **Requirements:**
+   - PHP 7.4 or later
+   - Composer
+
+   **Installation (Composer method):**
+   ```bash
+   # In parent directory (alongside your plugin and Moodle core)
+   cd ..
+   php composer.phar create-project moodlehq/moodle-plugin-ci moodle-plugin-ci ^4
+   ```
+
+   **Alternative: PHAR package**
+   ```bash
+   # Download pre-built package
+   wget https://github.com/moodlehq/moodle-plugin-ci/releases/download/4.1.6/moodle-plugin-ci.phar
+   ```
+
+   Your directory structure with CI tools:
+   ```
+   .
+   ├── moodle/                           # Moodle core (optional reference)
+   ├── moodle-plugin-ci/                 # CI tools (recommended)
+   └── moodle-block_your_plugin_name/    # Your plugin with MoMoPDA
+       ├── AGENTS.md
+       ├── CLAUDE.md
+       └── .prompts/
+   ```
+
+   **What CI tools provide:**
+   - Automated coding standards validation (`codechecker`)
+   - PHP syntax checking (`phplint`)
+   - PHPUnit test execution
+   - Behat acceptance testing
+   - Plugin validation
+   - And more (see `.prompts/core/ci-validation.md`)
+
+   For more information, visit the [Moodle Plugin CI documentation](https://moodlehq.github.io/moodle-plugin-ci/).
+
+5. **Start your coding agent from the root of the repository**
+
+6. **Begin development**
 
    Start by describing what you want to build. MoMoPDA will automatically detect your plugin type from the repository name and load the appropriate guides:
 
