@@ -5,8 +5,8 @@ This repository is a collection of prompts that can be combined in different way
 ## File Structure
 
 ```
-├── PROMPT.md                        # Main orchestrator file
-├── CLAUDE.md                        # Redirect to PROMPT.md
+├── AGENTS.md                        # Main orchestrator file
+├── CLAUDE.md                        # Redirect to AGENTS.md
 └── .prompts/  
     ├── core/
     │   ├── base-instructions.md     # Core Moodle development principles
@@ -176,7 +176,7 @@ All guides are based on analysis of Moodle 5.x core implementations and follow o
    .
    ├── moodle/                           # Moodle core (optional reference)
    └── moodle-block_your_plugin_name/    # Your plugin with MoMoPDA
-       ├── PROMPT.md
+       ├── AGENTS.md
        ├── CLAUDE.md
        └── .prompts/
    ```
