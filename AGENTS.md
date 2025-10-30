@@ -47,6 +47,7 @@ esac
 ```
 ALWAYS LOAD: .prompts/core/base-instructions.md
 ALWAYS LOAD: .prompts/core/ci-validation.md
+LOAD IF UI TASK: .prompts/core/moodle-design-principles.md
 LOAD IF DETECTED: .prompts/plugins/${PLUGIN_TYPE}.md
 LOAD IF DETECTED: .prompts/tasks/${TASK_TYPE}.md
 LOAD AS NEEDED: .prompts/patterns/*.md (based on code patterns detected)
