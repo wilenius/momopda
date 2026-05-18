@@ -5,7 +5,7 @@ MoMoPDA is a collection of Agent Skills for developing Moodle plugins. Following
 ## Available Skills
 
 | Skill | Description |
-|-------|-------------|
+| ----- | ----------- |
 | `moodle-core` | Core Moodle 5.x development: coding standards, security, JavaScript, CI validation |
 | `moodle-activity` | Activity module plugins (mod_*) |
 | `moodle-block` | Block plugins (block_*) |
@@ -15,6 +15,7 @@ MoMoPDA is a collection of Agent Skills for developing Moodle plugins. Following
 | `moodle-filter` | Filter plugins (filter_*) |
 | `moodle-tiny` | TinyMCE editor plugins (tiny_*) |
 | `moodle-report` | Report plugins (report_*) |
+| `moodle-contenttype` | Content bank type plugins (contenttype_*) |
 | `moodle-local` | Local plugins (local_*) |
 
 ## Installation
@@ -41,7 +42,7 @@ Copy the desired skill folders to your tool's skill directory, or reference them
 
 When working on a Moodle plugin, activate the relevant skills:
 
-```
+```text
 # For a block plugin
 /skill moodle-core
 /skill moodle-block
@@ -68,7 +69,7 @@ Or place Moodle at `../moodle` relative to your plugin directory.
 
 ## Directory Structure
 
-```
+```text
 skills/
 ├── moodle-core/
 │   ├── SKILL.md                # Core development practices
@@ -110,8 +111,8 @@ See [Moodle Plugin CI](https://moodlehq.github.io/moodle-plugin-ci/) for install
 ### Creating a New Plugin
 
 > I want to create a block plugin that displays student progress charts on the course page.
-
 > Help me create a question type plugin for mathematical expression input with LaTeX rendering.
+> Help me create a content bank type plugin that lets teachers upload and preview SVG diagrams in the content bank.
 
 ### Bug Fixing
 
@@ -120,7 +121,6 @@ See [Moodle Plugin CI](https://moodlehq.github.io/moodle-plugin-ci/) for install
 ### Complex Projects
 
 > I want to create a question bank (qbank) plugin which adds bulk edit functionality. It should use the AI generation purpose from ../moodle-local_ai_manager and the architecture of ../moodle-qbank_questiongen to: 1) bulk select questions to modify, 2) add a modification prompt, 3) generate new versions according to the prompt, 4) add a prefix to distinguish new questions.
-
 > This repo has a modular prompt system for developing Moodle plugins. I need to develop a local plugin that adds User overrides to all the quizzes on the course area. MVP: add custom quiz time limit for a user.
 
 ## Tips for Best Results
