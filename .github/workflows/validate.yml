@@ -1,0 +1,63 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  repository:
+    name: Skill and contract fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Report toolchain
+        run: |
+          python3 --version
+          php --version
+          bash --version
+
+      - name: Validate skill, adapters, and fixtures
+        env:
+          LC_ALL: C.UTF-8
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 -I -B tools/validate_repo.py
+
+  plugin-ci:
+    name: Moodle Plugin CI contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install pinned Moodle Plugin CI
+        run: >-
+          composer create-project moodlehq/moodle-plugin-ci
+          "$RUNNER_TEMP/moodle-plugin-ci" 4.5.11
+          --no-interaction --no-progress --prefer-dist
+
+      - name: Validate fixture contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ci="$RUNNER_TEMP/moodle-plugin-ci/bin/moodle-plugin-ci"
+          for fixture in skills/moodle-plugin-development/assets/fixtures/*/version.php; do
+              plugin="${fixture%/version.php}"
+              "$ci" phplint "$plugin"
+              "$ci" codechecker --max-warnings 0 "$plugin"
+              "$ci" savepoints "$plugin"
+          done

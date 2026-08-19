@@ -1,0 +1,53 @@
+name: Knowledge freshness
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Check support policy and authoritative sources
+        id: freshness
+        shell: bash
+        run: |
+          set +e
+          python3 -I -B tools/check_freshness.py --network > "$RUNNER_TEMP/freshness-report.txt" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/freshness-report.txt"
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Create or update freshness issue
+        if: steps.freshness.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT: ${{ runner.temp }}/freshness-report.txt
+          TITLE: "Review Moodle knowledge freshness"
+        shell: bash
+        run: |
+          set -euo pipefail
+          issue="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // empty')"
+          if [[ -n "$issue" ]]; then
+              gh issue comment "$issue" --body-file "$REPORT"
+          else
+              gh issue create --title "$TITLE" --body-file "$REPORT"
+          fi
+
+      - name: Fail when review is required
+        if: steps.freshness.outputs.status != '0'
+        run: exit 1

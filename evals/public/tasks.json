@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "filter-modern-contract",
+      "plugin_type": "filter",
+      "starting_fixture": "filter_momopda",
+      "target_moodle": "4.5",
+      "prompt": "Replace a legacy global text filter with the supported namespaced filter contract while preserving its marker replacement behavior.",
+      "setup": {
+        "remove": ["classes/text_filter.php"],
+        "overlay": "setups/filter-modern-contract"
+      },
+      "public_checks": ["plugin-ci", "modern-filter-class", "escaped-output"]
+    },
+    {
+      "id": "qbank-bulk-action",
+      "plugin_type": "qbank",
+      "starting_fixture": "qbank_momopda",
+      "target_moodle": "5.2",
+      "prompt": "Add a bulk action that updates selected questions after confirmation and returns safely to the originating question bank.",
+      "public_checks": ["plugin-ci", "sesskey", "context-capability", "per-question-capability"]
+    },
+    {
+      "id": "tiny-toolbar-button",
+      "plugin_type": "tiny",
+      "starting_fixture": "tiny_momopda",
+      "target_moodle": "5.2",
+      "prompt": "Add a localized TinyMCE toolbar button that inserts a fixed semantic element at the current selection.",
+      "public_checks": ["plugin-ci", "amd-build", "plugin-manager-registration", "localized-tooltip"]
+    },
+    {
+      "id": "activity-schema-upgrade",
+      "plugin_type": "mod",
+      "starting_fixture": "mod_momopda",
+      "target_moodle": "4.5",
+      "prompt": "Add a required activity setting to new installations and an upgrade path that gives existing instances a safe default.",
+      "public_checks": ["plugin-ci", "fresh-install", "upgrade-install", "savepoint"]
+    },
+    {
+      "id": "local-external-function",
+      "plugin_type": "local",
+      "starting_fixture": "local_momopda",
+      "target_moodle": "5.2",
+      "prompt": "Add an external function that returns one course summary only to users allowed to view that course.",
+      "public_checks": ["plugin-ci", "parameter-schema", "validate-context", "capability", "return-schema"]
+    },
+    {
+      "id": "qtype-safe-rendering",
+      "plugin_type": "qtype",
+      "starting_fixture": "qtype_momopda",
+      "target_moodle": "4.5",
+      "prompt": "Convert the information item into a one-line response question and render submitted text safely during attempts and review.",
+      "public_checks": ["plugin-ci", "question-contract", "attempt-field-name", "formatted-question-text"]
+    },
+    {
+      "id": "report-portable-query",
+      "plugin_type": "report",
+      "starting_fixture": "report_momopda",
+      "target_moodle": "5.2",
+      "prompt": "Show a paginated report of recently active users using portable Moodle DML and localized table headings.",
+      "public_checks": ["plugin-ci", "database-portability", "pagination", "language-strings", "row-access"]
+    },
+    {
+      "id": "enrol-instance-ui",
+      "plugin_type": "enrol",
+      "starting_fixture": "enrol_momopda",
+      "target_moodle": "4.5",
+      "prompt": "Allow course managers to add and remove an enrolment instance with a configurable active date range.",
+      "public_checks": ["plugin-ci", "instance-ui-contract", "capability", "date-validation"]
+    }
+  ]
+}

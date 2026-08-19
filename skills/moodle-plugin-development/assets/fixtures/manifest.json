@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "minimum_moodle": 2024100700,
+  "fixtures": [
+    {
+      "component": "mod_momopda",
+      "directory": "mod_momopda",
+      "legacy_destination": "mod/momopda",
+      "public_destination": "public/mod/momopda",
+      "core_reference": "mod/page"
+    },
+    {
+      "component": "block_momopda",
+      "directory": "block_momopda",
+      "legacy_destination": "blocks/momopda",
+      "public_destination": "public/blocks/momopda",
+      "core_reference": "blocks/course_summary"
+    },
+    {
+      "component": "enrol_momopda",
+      "directory": "enrol_momopda",
+      "legacy_destination": "enrol/momopda",
+      "public_destination": "public/enrol/momopda",
+      "core_reference": "enrol/fee"
+    },
+    {
+      "component": "filter_momopda",
+      "directory": "filter_momopda",
+      "legacy_destination": "filter/momopda",
+      "public_destination": "public/filter/momopda",
+      "core_reference": "filter/emailprotect"
+    },
+    {
+      "component": "local_momopda",
+      "directory": "local_momopda",
+      "legacy_destination": "local/momopda",
+      "public_destination": "public/local/momopda",
+      "core_reference": "lib/classes/plugininfo/local.php"
+    },
+    {
+      "component": "qbank_momopda",
+      "directory": "qbank_momopda",
+      "legacy_destination": "question/bank/momopda",
+      "public_destination": "public/question/bank/momopda",
+      "core_reference": "question/bank/viewcreator"
+    },
+    {
+      "component": "qtype_momopda",
+      "directory": "qtype_momopda",
+      "legacy_destination": "question/type/momopda",
+      "public_destination": "public/question/type/momopda",
+      "core_reference": "question/type/description"
+    },
+    {
+      "component": "report_momopda",
+      "directory": "report_momopda",
+      "legacy_destination": "report/momopda",
+      "public_destination": "public/report/momopda",
+      "core_reference": "report/status"
+    },
+    {
+      "component": "tiny_momopda",
+      "directory": "tiny_momopda",
+      "legacy_destination": "lib/editor/tiny/plugins/momopda",
+      "public_destination": "public/lib/editor/tiny/plugins/momopda",
+      "core_reference": "lib/editor/tiny/plugins/noautolink"
+    }
+  ]
+}

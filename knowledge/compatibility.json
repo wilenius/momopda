@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-08-19",
+  "policy": "Support Moodle 4.5 LTS and Moodle 5.x releases while they receive upstream security support.",
+  "planned_integration_boundaries": [
+    {
+      "moodle": "4.5",
+      "php": "8.1",
+      "purpose": "Oldest supported Moodle and PHP boundary"
+    },
+    {
+      "moodle": "5.2",
+      "php": "8.4",
+      "purpose": "Newest stable Moodle and PHP boundary at review time"
+    }
+  ],
+  "supported_releases": [
+    {
+      "moodle": "4.5",
+      "status": "security",
+      "security_support_ends": "2027-10-04"
+    },
+    {
+      "moodle": "5.0",
+      "status": "security",
+      "security_support_ends": "2026-10-05"
+    },
+    {
+      "moodle": "5.1",
+      "status": "stable",
+      "security_support_ends": "2027-04-19"
+    },
+    {
+      "moodle": "5.2",
+      "status": "stable",
+      "security_support_ends": "2027-10-04"
+    }
+  ],
+  "canary": {
+    "branch": "main",
+    "blocking": false
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-08-19",
+  "reviewed_moodle_source": {
+    "revision": "e3e51a0613c4e370911f9c84db685acc7df791f1",
+    "release": "5.1dev+ (Build: 20250826)",
+    "comparison_tag": "v4.5.6"
+  },
+  "sources": [
+    {
+      "id": "moodle-release-policy",
+      "url": "https://moodledev.io/general/releases",
+      "covers": ["compatibility", "php-matrix"]
+    },
+    {
+      "id": "moodle-coding-style",
+      "url": "https://moodledev.io/general/development/policies/codingstyle",
+      "covers": ["php", "documentation", "files"]
+    },
+    {
+      "id": "activity-contract",
+      "core_paths": ["mod/page", "mod/label", "course/moodleform_mod.php"],
+      "fixture": "mod_momopda"
+    },
+    {
+      "id": "block-contract",
+      "core_paths": ["blocks/course_summary", "blocks/moodleblock.class.php"],
+      "fixture": "block_momopda"
+    },
+    {
+      "id": "enrol-contract",
+      "core_paths": ["enrol/fee/classes/plugin.php", "lib/enrollib.php"],
+      "fixture": "enrol_momopda"
+    },
+    {
+      "id": "filter-contract",
+      "core_paths": ["filter/emailprotect/classes/text_filter.php", "filter/classes/filter_manager.php"],
+      "fixture": "filter_momopda"
+    },
+    {
+      "id": "local-contract",
+      "core_paths": ["lib/classes/plugininfo/local.php"],
+      "fixture": "local_momopda"
+    },
+    {
+      "id": "qbank-contract",
+      "core_paths": ["question/bank/viewcreator", "question/classes/local/bank"],
+      "fixture": "qbank_momopda"
+    },
+    {
+      "id": "qtype-contract",
+      "core_paths": ["question/type/description", "question/type/questiontypebase.php"],
+      "fixture": "qtype_momopda"
+    },
+    {
+      "id": "report-contract",
+      "core_paths": ["report/status", "lib/classes/report_helper.php"],
+      "fixture": "report_momopda"
+    },
+    {
+      "id": "tiny-contract",
+      "core_paths": ["lib/editor/tiny/plugins/noautolink", "lib/editor/tiny/classes/manager.php"],
+      "fixture": "tiny_momopda"
+    }
+  ]
+}
