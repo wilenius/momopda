@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://momopda.invalid/schemas/public-run-result-v1.json",
+  "title": "MoMoPDA public evaluation run result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "task_id",
+    "condition",
+    "status",
+    "prompt_sha256",
+    "workspace",
+    "revisions",
+    "timing",
+    "execution",
+    "artifacts",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "condition": {"enum": ["candidate", "released", "none"]},
+    "status": {"enum": ["pass", "fail", "error", "timeout", "incomplete"]},
+    "prompt_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_sha256", "output_sha256", "changes"],
+      "properties": {
+        "input_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "output_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "change", "sha256"],
+            "properties": {
+              "path": {"type": "string", "minLength": 1},
+              "change": {"enum": ["added", "modified", "removed"]},
+              "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            }
+          }
+        }
+      }
+    },
+    "revisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "harness", "skill", "moodle", "grader"],
+      "properties": {
+        "repository": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "dirty"],
+          "properties": {
+            "commit": {"type": "string", "minLength": 1},
+            "dirty": {"type": ["boolean", "null"]}
+          }
+        },
+        "harness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "artifact_sha256"],
+          "properties": {
+            "schema_version": {"const": 1},
+            "artifact_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+          }
+        },
+        "skill": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["condition", "artifact_sha256", "git_commit"],
+          "properties": {
+            "condition": {"enum": ["candidate", "released", "none"]},
+            "artifact_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+            "git_commit": {"type": ["string", "null"]}
+          }
+        },
+        "moodle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["release", "tag", "commit", "php", "layout", "destination"],
+          "properties": {
+            "release": {"type": "string"},
+            "tag": {"type": "string"},
+            "commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+            "php": {"type": "string"},
+            "layout": {"enum": ["legacy", "public"]},
+            "destination": {"type": "string", "minLength": 1}
+          }
+        },
+        "grader": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plugin_ci_version", "plugin_ci_sha256", "php_version", "database_name"],
+          "properties": {
+            "plugin_ci_version": {"type": ["string", "null"]},
+            "plugin_ci_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+            "php_version": {"type": ["string", "null"]},
+            "database_name": {"type": ["string", "null"]}
+          }
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "duration_ms", "timeout_seconds"],
+      "properties": {
+        "started_at": {"type": ["string", "null"]},
+        "duration_ms": {"type": ["integer", "null"], "minimum": 0},
+        "timeout_seconds": {"type": ["number", "null"], "exclusiveMinimum": 0}
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client",
+        "client_version",
+        "model",
+        "variant",
+        "agent",
+        "status",
+        "exit_code",
+        "signal",
+        "timed_out",
+        "usage",
+        "usage_available",
+        "argv",
+        "evidence"
+      ],
+      "properties": {
+        "client": {"type": ["string", "null"]},
+        "client_version": {"type": ["string", "null"]},
+        "model": {"type": ["string", "null"]},
+        "variant": {"type": ["string", "null"]},
+        "agent": {"type": ["string", "null"]},
+        "status": {"enum": ["succeeded", "client_error", "timeout", "malformed", "skipped"]},
+        "exit_code": {"type": ["integer", "null"], "minimum": 0},
+        "signal": {"type": ["integer", "null"], "minimum": 1},
+        "timed_out": {"type": "boolean"},
+        "usage": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["input", "output", "reasoning", "cache_read", "cache_write", "cost"],
+          "properties": {
+            "input": {"type": "integer", "minimum": 0},
+            "output": {"type": "integer", "minimum": 0},
+            "reasoning": {"type": "integer", "minimum": 0},
+            "cache_read": {"type": "integer", "minimum": 0},
+            "cache_write": {"type": "integer", "minimum": 0},
+            "cost": {"type": "number", "minimum": 0}
+          }
+        },
+        "usage_available": {"type": "boolean"},
+        "argv": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "string", "minLength": 1}
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace", "events", "stderr", "grader", "tools", "result"],
+      "properties": {
+        "workspace": {"type": "string"},
+        "events": {"type": "string"},
+        "stderr": {"type": "string"},
+        "grader": {"type": "string"},
+        "tools": {"type": "string"},
+        "result": {"type": "string"}
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["pass", "fail", "error", "incomplete"]},
+          "evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

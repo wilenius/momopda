@@ -40,7 +40,7 @@ class text_filter extends \core_filters\text_filter {
             return $text;
         }
 
-        $replacement = \html_writer::span(get_string('replacement', 'filter_momopda'), 'filter-momopda');
+        $replacement = \html_writer::span(s(get_string('replacement', 'filter_momopda')), 'filter-momopda');
         return str_replace('[[momopda]]', $replacement, $text);
     }
 }

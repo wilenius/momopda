@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "graders": {
+    "filter-modern-contract": {
+      "version": 1,
+      "checks": ["plugin-ci", "modern-filter-class", "escaped-output"],
+      "assertion": "evals/public/graders/filter-modern-contract/harness_contract_test.php"
+    }
+  }
+}

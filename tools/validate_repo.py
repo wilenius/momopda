@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from pathlib import PurePosixPath
 import re
 import shutil
 import subprocess
@@ -423,6 +424,8 @@ def validate_public_evaluations() -> None:
     if not isinstance(document, dict):
         error("evals/public/tasks.json: top-level value must be an object")
         return
+    if set(document) != {"schema_version", "tasks"}:
+        error("evals/public/tasks.json: top-level fields must be schema_version and tasks")
     if document.get("schema_version") != 1:
         error("evals/public/tasks.json: schema_version must be 1")
     tasks = document.get("tasks")
@@ -440,6 +443,9 @@ def validate_public_evaluations() -> None:
         }
 
     ids: list[str] = []
+    allowed_task_keys = {
+        "id", "plugin_type", "starting_fixture", "target_moodle", "prompt", "setup", "public_checks",
+    }
     for task in tasks:
         if not isinstance(task, dict):
             error("evals/public/tasks.json: every task must be an object")
@@ -449,6 +455,9 @@ def validate_public_evaluations() -> None:
         fixture_name = task.get("starting_fixture")
         target_moodle = task.get("target_moodle")
         checks = task.get("public_checks")
+        unknown_keys = sorted(set(task) - allowed_task_keys)
+        if unknown_keys:
+            error(f"evals/public/tasks.json: task {task_id} has unknown fields: {', '.join(unknown_keys)}")
         if not isinstance(task_id, str) or not task_id:
             error("evals/public/tasks.json: every task needs a string ID")
             task_id = "<unknown>"
@@ -467,7 +476,10 @@ def validate_public_evaluations() -> None:
             error(f"evals/public/tasks.json: task {task_id} targets an unsupported Moodle release")
         if not isinstance(task.get("prompt"), str) or not task.get("prompt"):
             error(f"evals/public/tasks.json: task {task_id} needs a prompt")
-        if not isinstance(checks, list) or not checks or not all(isinstance(check, str) for check in checks):
+        if not isinstance(checks, list) or not checks or not all(
+            isinstance(check, str) and re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", check)
+            for check in checks
+        ):
             error(f"evals/public/tasks.json: task {task_id} needs string public checks")
         elif len(checks) != len(set(checks)):
             error(f"evals/public/tasks.json: task {task_id} public checks must be unique")
@@ -478,25 +490,121 @@ def validate_public_evaluations() -> None:
         if not isinstance(setup, dict) or fixture is None:
             error(f"evals/public/tasks.json: task {task_id} has an invalid setup")
             continue
+        if set(setup) != {"remove", "overlay"}:
+            error(f"evals/public/tasks.json: task {task_id} setup must contain only remove and overlay")
         removals = setup.get("remove", [])
         if not isinstance(removals, list) or not all(isinstance(item, str) for item in removals):
             error(f"evals/public/tasks.json: task {task_id} setup removals must be strings")
         else:
+            if len(removals) != len(set(removals)):
+                error(f"evals/public/tasks.json: task {task_id} setup removals must be unique")
             for item in removals:
+                relative = PurePosixPath(item)
+                unsafe = (
+                    not item
+                    or "\\" in item
+                    or relative.is_absolute()
+                    or item != relative.as_posix()
+                    or any(part in {"", ".", ".."} for part in relative.parts)
+                )
                 resolved = (fixture / item).resolve()
-                if not resolved.is_relative_to(fixture.resolve()) or not resolved.exists():
+                if unsafe or not resolved.is_relative_to(fixture.resolve()) or not resolved.is_file():
                     error(f"evals/public/tasks.json: task {task_id} removes an invalid fixture path: {item}")
         overlay = setup.get("overlay")
         if not isinstance(overlay, str):
             error(f"evals/public/tasks.json: task {task_id} setup needs an overlay")
         else:
             public_root = (ROOT / "evals" / "public").resolve()
+            relative = PurePosixPath(overlay)
+            unsafe = (
+                not overlay
+                or "\\" in overlay
+                or relative.is_absolute()
+                or overlay != relative.as_posix()
+                or any(part in {"", ".", ".."} for part in relative.parts)
+            )
             overlay_path = (public_root / overlay).resolve()
-            if not overlay_path.is_relative_to(public_root) or not overlay_path.is_dir():
+            if unsafe or not overlay_path.is_relative_to(public_root) or not overlay_path.is_dir():
                 error(f"evals/public/tasks.json: task {task_id} has an invalid overlay: {overlay}")
+            elif any(path.is_symlink() for path in overlay_path.rglob("*")):
+                error(f"evals/public/tasks.json: task {task_id} overlay contains a symbolic link")
 
     if len(ids) != len(set(ids)):
         error("evals/public/tasks.json: task IDs must be unique")
+
+    validate_evaluation_schemas({task.get("id"): task for task in tasks if isinstance(task, dict)})
+
+
+def validate_evaluation_schemas(tasks: dict[object, dict[str, object]]) -> None:
+    registry_path = ROOT / "evals" / "public" / "graders.json"
+    registry = load_json(registry_path)
+    if not isinstance(registry, dict) or registry.get("schema_version") != 1:
+        error("evals/public/graders.json: must be a schema_version 1 object")
+    elif set(registry) != {"schema_version", "graders"} or not isinstance(registry.get("graders"), dict):
+        error("evals/public/graders.json: must contain only schema_version and a graders object")
+    else:
+        graders = registry["graders"]
+        assert isinstance(graders, dict)
+        for task_id, grader in graders.items():
+            task = tasks.get(task_id)
+            if task is None or not isinstance(grader, dict):
+                error(f"evals/public/graders.json: unknown or invalid task mapping {task_id}")
+                continue
+            if set(grader) != {"version", "checks", "assertion"} or grader.get("version") != 1:
+                error(f"evals/public/graders.json: grader {task_id} has an invalid versioned contract")
+            if grader.get("checks") != task.get("public_checks"):
+                error(f"evals/public/graders.json: grader {task_id} does not implement every declared check")
+            assertion = grader.get("assertion")
+            if not isinstance(assertion, str):
+                error(f"evals/public/graders.json: grader {task_id} needs an assertion path")
+                continue
+            assertion_path = (ROOT / assertion).resolve()
+            public_root = (ROOT / "evals" / "public").resolve()
+            if not assertion_path.is_relative_to(public_root) or not assertion_path.is_file():
+                error(f"evals/public/graders.json: grader {task_id} assertion path is invalid")
+
+    schema_path = ROOT / "evals" / "public" / "run-result.schema.json"
+    schema = load_json(schema_path)
+    required = {
+        "schema_version", "run_id", "task_id", "condition", "status", "prompt_sha256",
+        "workspace", "revisions", "timing", "execution", "artifacts", "checks",
+    }
+    if not isinstance(schema, dict):
+        error("evals/public/run-result.schema.json: must be an object")
+    else:
+        properties = schema.get("properties")
+        schema_required = schema.get("required")
+        if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
+            error("evals/public/run-result.schema.json: root must be a closed object")
+        if not isinstance(properties, dict) or set(properties) != required:
+            error("evals/public/run-result.schema.json: properties do not match the run record contract")
+        if not isinstance(schema_required, list) or set(schema_required) != required:
+            error("evals/public/run-result.schema.json: required fields do not match the run record contract")
+
+
+def validate_evaluation_harness() -> None:
+    tests = ROOT / "tools" / "tests"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-B",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            str(tests),
+            "-p",
+            "test_*.py",
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode:
+        error(f"evaluation harness smoke tests failed: {result.stderr.strip() or result.stdout.strip()}")
 
 
 def validate_source_syntax() -> None:
@@ -533,7 +641,7 @@ def validate_source_syntax() -> None:
                 error(f"{path.relative_to(ROOT)}: shell script is not executable")
 
     php = shutil.which("php")
-    php_files = sorted(SKILL_DIR.rglob("*.php"))
+    php_files = sorted(path for path in ROOT.rglob("*.php") if ".git" not in path.parts)
     if php is None:
         NOTES.append(f"PHP unavailable; skipped syntax checks for {len(php_files)} fixture files")
     else:
@@ -755,6 +863,7 @@ def main() -> int:
     validate_structured_data()
     validate_public_evaluations()
     validate_source_syntax()
+    validate_evaluation_harness()
     validate_fixture_staging()
     validate_installer()
 
