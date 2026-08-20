@@ -2,15 +2,21 @@
   "schema_version": 1,
   "reviewed_on": "2026-08-19",
   "policy": "Support Moodle 4.5 LTS and Moodle 5.x releases while they receive upstream security support.",
-  "planned_integration_boundaries": [
+  "enforced_integration_boundaries": [
     {
       "moodle": "4.5",
+      "tag": "v4.5.13",
+      "commit": "8cbae18a2898cfd8266ec91ac206e12004f0ff5f",
       "php": "8.1",
+      "layout": "legacy",
       "purpose": "Oldest supported Moodle and PHP boundary"
     },
     {
       "moodle": "5.2",
+      "tag": "v5.2.2",
+      "commit": "acfa383c13dd46c83ca82894a8e95fac273fda33",
       "php": "8.4",
+      "layout": "public",
       "purpose": "Newest stable Moodle and PHP boundary at review time"
     }
   ],

@@ -8,23 +8,23 @@
 - Nine minimal contract fixtures derived from Moodle core.
 - Dependency-free repository validation.
 - Pinned Moodle Plugin CI lint, coding-style, and savepoint workflow.
+- Database-backed integration boundaries for Moodle 4.5.13/PHP 8.1 and Moodle 5.2.2/PHP 8.4.
+- Runtime discovery and defining-contract assertions for all nine fixtures.
 - OpenCode and Claude Code installation adapters with discovery smoke testing for OpenCode.
 - Structured compatibility and source registries.
 - Weekly support, review-age, and authoritative-link freshness checks.
 - Public benchmark task format and private holdout design.
 
-## Next Integration Milestone
+## Enforced Integration Boundaries
 
-The implementation handoff, verified commands, and acceptance criteria are in [`next-steps.md`](next-steps.md).
+The database-backed GitHub Actions matrix enforces the compatibility boundaries recorded in `knowledge/compatibility.json`:
 
-Add a database-backed GitHub Actions matrix at the compatibility boundaries recorded in `knowledge/compatibility.json`:
+| Moodle tag | PHP | Layout | Purpose |
+|---|---:|---|---|
+| `v4.5.13` | 8.1 | Repository root | Oldest supported API and runtime boundary |
+| `v5.2.2` | 8.4 | `public/` web root | Newest stable boundary at the initial review |
 
-| Moodle | PHP | Purpose |
-|---|---:|---|
-| 4.5 | 8.1 | Oldest supported API and runtime boundary |
-| 5.2 | 8.4 | Newest stable boundary at the initial review |
-
-The workflow must install every fixture at the layout-specific destination, complete Moodle installation, exercise plugin discovery, run applicable PHPUnit and frontend checks, and retain logs as artifacts. Moving stable branches and Moodle `main` belong in a non-blocking scheduled canary workflow.
+Each job starts from an empty PostgreSQL database, stages hashed copies of all nine fixtures, verifies the pinned Moodle commit and physical destinations, completes Moodle installation, exercises discovery and defining contracts, runs strict Plugin CI and frontend checks, and retains failure logs. Moving stable branches and Moodle `main` remain reserved for a non-blocking scheduled canary after the pinned workflow is green.
 
 ## Evaluation Milestone
 

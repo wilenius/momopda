@@ -1,0 +1,179 @@
+name: Moodle integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  boundary:
+    name: Moodle ${{ matrix.moodle }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - moodle: v4.5.13
+            commit: 8cbae18a2898cfd8266ec91ac206e12004f0ff5f
+            php: "8.1"
+            layout: legacy
+          - moodle: v5.2.2
+            commit: acfa383c13dd46c83ca82894a8e95fac273fda33
+            php: "8.4"
+            layout: public
+
+    services:
+      postgres:
+        image: postgres:17.11@sha256:e38411452a464af89e5adadb8d223bf53b898d47d6ef918b2d58c08707350449
+        env:
+          POSTGRES_PASSWORD: moodle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          extensions: pgsql
+          ini-values: max_input_vars=5000, opcache.enable_cli=1
+          tools: composer:v2
+
+      - name: Prepare logs
+        run: mkdir -p "$RUNNER_TEMP/moodle-integration-logs"
+
+      - name: Install pinned Moodle Plugin CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer create-project moodlehq/moodle-plugin-ci \
+              "$RUNNER_TEMP/moodle-plugin-ci" 4.5.11 \
+              --no-interaction --no-progress --prefer-dist \
+              2>&1 | tee "$RUNNER_TEMP/moodle-integration-logs/plugin-ci-install.log"
+          sudo locale-gen en_AU.UTF-8
+          echo "NVM_DIR=$HOME/.nvm" >> "$GITHUB_ENV"
+
+      - name: Stage contract fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I -B tools/stage_fixtures.py \
+              --output "$RUNNER_TEMP/momopda-fixtures" \
+              --layout "${{ matrix.layout }}" \
+              2>&1 | tee "$RUNNER_TEMP/moodle-integration-logs/staging.log"
+
+      - name: Install Moodle and all fixtures
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          ci="$RUNNER_TEMP/moodle-plugin-ci/bin/moodle-plugin-ci"
+          "$ci" install \
+              --branch "${{ matrix.moodle }}" \
+              --moodle "$RUNNER_TEMP/moodle" \
+              --data "$RUNNER_TEMP/moodledata" \
+              --plugin "$RUNNER_TEMP/momopda-fixtures/primary/mod_momopda" \
+              --extra-plugins "$RUNNER_TEMP/momopda-fixtures/extra-plugins" \
+              --db-type pgsql \
+              --db-host 127.0.0.1 \
+              --db-port 5432 \
+              --db-name moodle \
+              --db-user postgres \
+              --db-pass moodle \
+              2>&1 | tee "$RUNNER_TEMP/moodle-integration-logs/moodle-install.log"
+          actualcommit="$(git -C "$RUNNER_TEMP/moodle" rev-parse HEAD)"
+          if [[ "$actualcommit" != "${{ matrix.commit }}" ]]; then
+              printf 'Expected Moodle commit %s, found %s\n' "${{ matrix.commit }}" "$actualcommit" >&2
+              exit 1
+          fi
+
+      - name: Install site and assert discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          php "$RUNNER_TEMP/moodle/admin/cli/install_database.php" \
+              --lang=en \
+              --adminuser=admin \
+              --adminpass="M0mopda-CI-only!" \
+              --adminemail="admin@example.invalid" \
+              --fullname="MoMoPDA integration" \
+              --shortname=MoMoPDA \
+              --agree-license \
+              2>&1 | tee "$RUNNER_TEMP/moodle-integration-logs/site-install.log"
+          php tools/assert_moodle_install.php \
+              --moodle "$RUNNER_TEMP/moodle" \
+              --manifest "$RUNNER_TEMP/momopda-fixtures/manifest.json" \
+              --layout "${{ matrix.layout }}" \
+              2>&1 | tee "$RUNNER_TEMP/moodle-integration-logs/install-assertions.log"
+
+      - name: Run Plugin CI and runtime contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ci="$RUNNER_TEMP/moodle-plugin-ci/bin/moodle-plugin-ci"
+          primary="$RUNNER_TEMP/momopda-fixtures/primary/mod_momopda"
+          extras="$RUNNER_TEMP/momopda-fixtures/extra-plugins"
+          if [[ "${{ matrix.layout }}" == "public" ]]; then
+              tiny="$RUNNER_TEMP/moodle/public/lib/editor/tiny/plugins/momopda"
+          else
+              tiny="$RUNNER_TEMP/moodle/lib/editor/tiny/plugins/momopda"
+          fi
+          {
+              for plugin in "$primary" "$extras"/*; do
+                  "$ci" phplint "$plugin"
+                  "$ci" codechecker --max-warnings 0 "$plugin"
+                  "$ci" validate --moodle "$RUNNER_TEMP/moodle" "$plugin"
+                  "$ci" phpdoc --moodle "$RUNNER_TEMP/moodle" --max-warnings 0 "$plugin"
+                  "$ci" mustache --moodle "$RUNNER_TEMP/moodle" "$plugin"
+                  "$ci" savepoints "$plugin"
+              done
+              "$ci" grunt \
+                  --moodle "$RUNNER_TEMP/moodle" \
+                  --tasks amd \
+                  --max-lint-warnings 0 \
+                  "$tiny"
+              "$ci" phpunit \
+                  --moodle "$RUNNER_TEMP/moodle" \
+                  --fail-on-incomplete \
+                  --fail-on-risky \
+                  --fail-on-skipped \
+                  --fail-on-warning \
+                  "$primary"
+          } 2>&1 | tee "$RUNNER_TEMP/moodle-integration-logs/contracts.log"
+
+      - name: Revalidate repository and source immutability
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 -I -B tools/validate_repo.py
+          git diff --check
+          git status --short | tee "$RUNNER_TEMP/moodle-integration-logs/source-status.log"
+          test ! -s "$RUNNER_TEMP/moodle-integration-logs/source-status.log"
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: moodle-${{ matrix.moodle }}-php-${{ matrix.php }}-logs
+          path: |
+            ${{ runner.temp }}/moodle-integration-logs
+            ${{ runner.temp }}/moodledata/**/*.log
+          if-no-files-found: warn
+          retention-days: 14

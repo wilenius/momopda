@@ -5,9 +5,9 @@ This document is the context-clear handoff for the modernization work started on
 ## Repository State
 
 - Branch: `feature/agent-skills-conversion`.
-- Starting HEAD: `2e2eee2`.
-- The modernization changes are intentionally uncommitted.
-- The worktree contains deletion of the ten old skills and addition of the single canonical skill, fixtures, tools, workflows, adapters, knowledge metadata, and evaluation scaffolding.
+- Immediate-milestone baseline HEAD: `54d44e1`.
+- The immediate-milestone changes are intentionally uncommitted.
+- The baseline commit contains deletion of the ten old skills and addition of the single canonical skill, fixtures, tools, workflows, adapters, knowledge metadata, and evaluation scaffolding.
 - Do not restore the deleted skill files or the tracked `tags` artifact.
 - Do not modify or discard unrelated user changes if any appear after this handoff.
 
@@ -77,18 +77,18 @@ The default freshness window is intentionally 60 days. As of this handoff, it ex
 
 Do not modify this checkout to test fixtures. Use Moodle Plugin CI to create isolated installations.
 
-## Immediate Milestone
+## Completed Immediate Milestone
 
-Implement the database-backed compatibility boundary matrix. Do this before expanding skill content or building model evaluations.
+The database-backed compatibility boundary matrix was implemented on 19 August 2026. It must remain green before expanding skill content or building model evaluations.
 
 Required boundaries:
 
 | Moodle tag | PHP | Role |
 |---|---:|---|
-| Latest pinned Moodle 4.5 patch | 8.1 | Oldest supported boundary |
-| Latest pinned Moodle 5.2 patch | 8.4 | Newest stable boundary |
+| `v4.5.13` | 8.1 | Oldest supported boundary |
+| `v5.2.2` | 8.4 | Newest stable boundary |
 
-At handoff time the expected tags are `v4.5.13` and `v5.2.2`. Verify them against the official release page before pinning the workflow.
+The tags were verified against Moodle's official release pages on 19 August 2026. The workflow also verifies their peeled Git commit IDs after checkout.
 
 ## Implementation Order
 
@@ -130,7 +130,7 @@ Do not call the matrix complete if it only installs Moodle or runs PHP lint.
 - Failures retain enough logs to reproduce locally.
 - `tools/validate_repo.py`, standalone Plugin CI checks, and `git diff --check` remain green.
 
-After these criteria pass, rename `planned_integration_boundaries` in `knowledge/compatibility.json` to reflect enforced coverage and update `docs/roadmap.md`.
+These criteria are now represented by `enforced_integration_boundaries` in `knowledge/compatibility.json` and the enforced-boundary section in `docs/roadmap.md`.
 
 ## Later Milestones
 

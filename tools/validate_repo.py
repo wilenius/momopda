@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -232,7 +233,9 @@ def validate_text_files() -> None:
         elif candidate.is_dir():
             paths.extend(path for path in candidate.rglob("*") if path.is_file())
     for path in sorted(set(paths)):
-        if path.suffix.lower() not in {".md", ".json", ".py", ".sh", ".yml", ".yaml", ".php", ".js", ".xml", ".svg"}:
+        if path.suffix.lower() not in {
+            ".md", ".json", ".map", ".py", ".sh", ".yml", ".yaml", ".php", ".js", ".xml", ".svg"
+        }:
             continue
         try:
             data = path.read_bytes()
@@ -242,7 +245,8 @@ def validate_text_files() -> None:
             continue
         if b"\r" in data:
             error(f"{path.relative_to(ROOT)}: contains CR characters")
-        if data and not data.endswith(b"\n"):
+        generated_amd = path.parent.name == "build" and path.parent.parent.name == "amd"
+        if data and not data.endswith(b"\n") and not generated_amd:
             error(f"{path.relative_to(ROOT)}: missing final newline")
 
 
@@ -275,15 +279,30 @@ def validate_structured_data() -> None:
                     error(f"knowledge/compatibility.json: invalid support date for {version}")
             if len(versions) != len(set(versions)):
                 error("knowledge/compatibility.json: Moodle releases must be unique")
-            boundaries = compatibility.get("planned_integration_boundaries")
+            boundaries = compatibility.get("enforced_integration_boundaries")
             if not isinstance(boundaries, list) or not boundaries:
-                error("knowledge/compatibility.json: planned_integration_boundaries must be a non-empty list")
+                error("knowledge/compatibility.json: enforced_integration_boundaries must be a non-empty list")
             else:
                 boundary_versions = {
                     entry.get("moodle") for entry in boundaries if isinstance(entry, dict)
                 }
                 if not boundary_versions.issubset(set(versions)):
                     error("knowledge/compatibility.json: integration boundaries must be supported releases")
+                for boundary in boundaries:
+                    if not isinstance(boundary, dict):
+                        error("knowledge/compatibility.json: integration boundaries must be objects")
+                        continue
+                    if not isinstance(boundary.get("tag"), str) or not re.fullmatch(
+                        r"v\d+\.\d+\.\d+", boundary["tag"]
+                    ):
+                        error("knowledge/compatibility.json: integration boundaries need pinned patch tags")
+                    if not isinstance(boundary.get("commit"), str) or not re.fullmatch(
+                        r"[a-f0-9]{40}", boundary["commit"]
+                    ):
+                        error("knowledge/compatibility.json: integration boundaries need pinned commits")
+                    if boundary.get("layout") not in {"legacy", "public"}:
+                        error("knowledge/compatibility.json: integration boundaries need a known layout")
+                validate_integration_matrix(boundaries)
 
     source_fixture_names: set[str] = set()
     if not isinstance(sources, dict):
@@ -393,6 +412,9 @@ def validate_fixtures(manifest: dict[str, object]) -> None:
     tiny_build = FIXTURES_DIR / "tiny_momopda" / "amd" / "build" / "plugin.min.js"
     if not tiny_build.is_file():
         error("fixture tiny_momopda: distributable AMD build is missing")
+    tiny_map = FIXTURES_DIR / "tiny_momopda" / "amd" / "build" / "plugin.min.js.map"
+    if not tiny_map.is_file():
+        error("fixture tiny_momopda: distributable AMD source map is missing")
 
 
 def validate_public_evaluations() -> None:
@@ -527,6 +549,113 @@ def validate_source_syntax() -> None:
                 error(f"{path.relative_to(ROOT)}: PHP syntax check failed: {detail}")
 
 
+def fixture_snapshot(path: Path) -> dict[str, str]:
+    return {
+        file.relative_to(path).as_posix(): hashlib.sha256(file.read_bytes()).hexdigest()
+        for file in sorted(path.rglob("*"))
+        if file.is_file()
+    }
+
+
+def validate_fixture_staging() -> None:
+    tool = ROOT / "tools" / "stage_fixtures.py"
+    manifest = load_json(FIXTURES_DIR / "manifest.json")
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("fixtures"), list):
+        return
+
+    source_before = fixture_snapshot(FIXTURES_DIR)
+    entries = [entry for entry in manifest["fixtures"] if isinstance(entry, dict)]
+    with tempfile.TemporaryDirectory(prefix="momopda-stage-") as temporary:
+        for layout in ("legacy", "public"):
+            output = Path(temporary) / layout
+            command = [
+                sys.executable,
+                "-I",
+                "-B",
+                str(tool),
+                "--output",
+                str(output),
+                "--layout",
+                layout,
+            ]
+            result = subprocess.run(command, check=False, capture_output=True, text=True)
+            if result.returncode:
+                error(f"fixture staging failed for {layout}: {result.stderr.strip() or result.stdout.strip()}")
+                continue
+
+            try:
+                staged = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                error(f"fixture staging produced an invalid {layout} manifest: {exc}")
+                continue
+            if not isinstance(staged, dict):
+                error(f"fixture staging produced a non-object {layout} manifest")
+                continue
+            staged_entries = staged.get("fixtures")
+            if staged.get("layout") != layout or not isinstance(staged_entries, list):
+                error(f"fixture staging did not record the {layout} layout")
+                continue
+            if len(staged_entries) != len(entries):
+                error(f"fixture staging omitted fixtures for {layout}")
+                continue
+
+            for source_entry, staged_entry in zip(entries, staged_entries, strict=True):
+                if not isinstance(staged_entry, dict):
+                    error(f"fixture staging produced an invalid entry for {layout}")
+                    continue
+                directory = source_entry.get("directory")
+                destination = source_entry.get(f"{layout}_destination")
+                staged_path = staged_entry.get("staged_path")
+                hashes = staged_entry.get("files")
+                if staged_entry.get("destination") != destination:
+                    error(f"fixture staging selected the wrong destination for {directory} on {layout}")
+                if not isinstance(directory, str) or not isinstance(staged_path, str):
+                    error(f"fixture staging produced invalid paths for {layout}")
+                    continue
+                staged_fixture = output / staged_path
+                expected_hashes = fixture_snapshot(FIXTURES_DIR / directory)
+                if hashes != expected_hashes or fixture_snapshot(staged_fixture) != expected_hashes:
+                    error(f"fixture staging changed {directory} on {layout}")
+
+            existing_result = subprocess.run(command, check=False, capture_output=True, text=True)
+            if existing_result.returncode == 0:
+                error(f"fixture staging replaced an existing {layout} output directory")
+
+    if fixture_snapshot(FIXTURES_DIR) != source_before:
+        error("fixture staging modified the canonical fixture sources")
+
+
+def validate_integration_matrix(boundaries: list[object]) -> None:
+    path = ROOT / ".github" / "workflows" / "moodle-integration.yml"
+    try:
+        workflow = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        error(f"{path.relative_to(ROOT)}: cannot read integration workflow: {exc}")
+        return
+
+    expected = []
+    for boundary in boundaries:
+        if not isinstance(boundary, dict):
+            continue
+        values = tuple(boundary.get(key) for key in ("tag", "commit", "php", "layout"))
+        if all(isinstance(value, str) for value in values):
+            expected.append(values)
+
+    actual = re.findall(
+        r"^\s+- moodle: (v\d+\.\d+\.\d+)\n"
+        r"\s+commit: ([a-f0-9]{40})\n"
+        r'\s+php: "([0-9]+\.[0-9]+)"\n'
+        r"\s+layout: (legacy|public)$",
+        workflow,
+        flags=re.MULTILINE,
+    )
+    if actual != expected:
+        error(
+            f"{path.relative_to(ROOT)}: boundary matrix does not match "
+            "knowledge/compatibility.json"
+        )
+
+
 def validate_installer() -> None:
     installer = ROOT / "scripts" / "install_skill.py"
     with tempfile.TemporaryDirectory(prefix="momopda-") as temporary:
@@ -626,6 +755,7 @@ def main() -> int:
     validate_structured_data()
     validate_public_evaluations()
     validate_source_syntax()
+    validate_fixture_staging()
     validate_installer()
 
     for message in sorted(NOTES):

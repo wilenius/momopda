@@ -1,6 +1,6 @@
 # Contract Fixtures
 
-These plugins are intentionally small executable contracts derived from simple Moodle-core implementations. Repository CI checks their structure, syntax, and Moodle coding style. A separate integration matrix is required before claiming runtime installation coverage across Moodle 4.5 and supported Moodle 5.x versions.
+These plugins are intentionally small executable contracts derived from simple Moodle-core implementations. Repository CI checks their structure, syntax, and Moodle coding style. The integration matrix installs and exercises them on the pinned Moodle 4.5 and 5.2 compatibility boundaries.
 
 They are not production starter plugins. Production code may also require privacy declarations, backup and restore, events, tasks, accessibility work, upgrade steps, PHPUnit, Behat, and feature-specific capabilities.
 
@@ -16,4 +16,4 @@ They are not production starter plugins. Production code may also require privac
 | `report_momopda` | `report/status` | Administration report page |
 | `tiny_momopda` | `lib/editor/tiny/plugins/noautolink` | TinyMCE loader registration |
 
-The fixture manifest records destination paths for pre-5.1 and 5.1+ Moodle layouts. Integration tooling should copy fixtures rather than edit a Moodle checkout in place.
+The fixture manifest records destination paths for pre-5.1 and 5.1+ Moodle layouts. The staging tool copies every fixture, records its selected destination and file hashes, and refuses to replace an existing output directory.

@@ -61,7 +61,7 @@ Moodle 4.5 keeps plugin directories at the repository root. Moodle 5.1 and later
 
 ## Contract Fixtures
 
-Minimal plugin fixtures live in `skills/moodle-plugin-development/assets/fixtures/`. They are derived from stable contracts and simple implementations in Moodle core. They are intended to be installed, linted, and used as the source for complete examples. They are not production starter plugins.
+Minimal plugin fixtures live in `skills/moodle-plugin-development/assets/fixtures/`. They are derived from stable contracts and simple implementations in Moodle core. CI installs all nine into fresh Moodle 4.5.13 and 5.2.2 sites, verifies layout-specific discovery, and exercises their defining contracts. They are not production starter plugins.
 
 ## Validate This Repository
 
