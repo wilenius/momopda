@@ -27,14 +27,6 @@ SETUPS_DIR = ROOT / "evals" / "public" / "setups"
 COMPATIBILITY_PATH = ROOT / "knowledge" / "compatibility.json"
 CANDIDATE_SKILL = ROOT / "skills" / "moodle-plugin-development"
 FAKE_CLIENT = ROOT / "tools" / "fake_eval_client.py"
-FILTER_GRADER = (
-    ROOT
-    / "evals"
-    / "public"
-    / "graders"
-    / "filter-modern-contract"
-    / "harness_contract_test.php"
-)
 RESULT_SCHEMA_VERSION = 1
 TERMINAL_STATUSES = {"pass", "fail", "error", "timeout", "incomplete"}
 CHECK_STATUSES = {"pass", "fail", "error", "incomplete"}
@@ -175,17 +167,24 @@ def containing_git_revision(path: Path) -> str | None:
     return git_output(["rev-parse", "HEAD"], Path(root))
 
 
-def harness_artifact_hash() -> str:
+def harness_artifact_paths() -> list[Path]:
+    tasks, _, _ = load_contracts()
+    graders = load_graders(tasks)
     paths = [
         Path(__file__).resolve(),
         FAKE_CLIENT,
+        TASKS_PATH,
         GRADERS_PATH,
-        FILTER_GRADER,
         ROOT / "evals" / "public" / "run-result.schema.json",
     ]
+    paths.extend(grader_assertion_path(task_id, grader) for task_id, grader in sorted(graders.items()))
+    return paths
+
+
+def harness_artifact_hash() -> str:
     snapshot = {
         path.relative_to(ROOT).as_posix(): sha256_bytes(path.read_bytes())
-        for path in paths
+        for path in harness_artifact_paths()
         if path.is_file()
     }
     return snapshot_hash(snapshot)
@@ -283,22 +282,94 @@ def load_graders(tasks: dict[str, dict[str, object]]) -> dict[str, dict[str, obj
     document = load_json(GRADERS_PATH)
     if not isinstance(document, dict) or document.get("schema_version") != 1:
         fail("grader registry must be a schema_version 1 object")
+    if set(document) != {"schema_version", "graders"}:
+        fail("grader registry must contain only schema_version and graders")
     graders = document.get("graders")
     if not isinstance(graders, dict):
         fail("grader registry must contain a graders object")
     for task_id, grader in graders.items():
         if task_id not in tasks or not isinstance(grader, dict):
             fail(f"grader registry references an unknown task: {task_id}")
+        if set(grader) != {"version", "checks", "assertion"} or grader.get("version") != 1:
+            fail(f"grader {task_id} has an invalid versioned contract")
         checks = grader.get("checks")
         if checks != tasks[task_id].get("public_checks"):
             fail(f"grader registry check mapping differs for {task_id}")
-        assertion = grader.get("assertion")
-        if not isinstance(assertion, str):
-            fail(f"grader {task_id} needs an assertion path")
-        assertion_path = ROOT / assertion
-        if not assertion_path.is_file() or not assertion_path.resolve().is_relative_to((ROOT / "evals" / "public").resolve()):
-            fail(f"grader {task_id} has an invalid assertion path")
+        if not isinstance(checks, list) or not checks or checks[0] != "plugin-ci":
+            fail(f"grader {task_id} must declare plugin-ci first")
+        grader_assertion_path(task_id, grader)
     return graders
+
+
+def grader_assertion_path(task_id: str, grader: dict[str, object]) -> Path:
+    assertion = grader.get("assertion")
+    relative = safe_relative(assertion, f"grader {task_id} assertion")
+    expected = PurePosixPath(
+        "evals",
+        "public",
+        "graders",
+        task_id,
+        "harness_contract_test.php",
+    )
+    if relative != expected:
+        fail(f"grader {task_id} assertion must be {expected.as_posix()}")
+    assertion_path = ROOT.joinpath(*relative.parts)
+    if assertion_path.is_symlink() or not assertion_path.is_file():
+        fail(f"grader {task_id} has an invalid assertion path")
+    return assertion_path
+
+
+def moodle_application_root(moodle: Path, layout: object) -> Path:
+    if layout == "legacy":
+        return moodle
+    if layout == "public":
+        return moodle / "public"
+    fail(f"unsupported Moodle layout: {layout}")
+
+
+def moodle_cli_root(moodle: Path, layout: object) -> Path:
+    if layout not in {"legacy", "public"}:
+        fail(f"unsupported Moodle layout: {layout}")
+    return moodle
+
+
+def check_method_name(check_id: str) -> str:
+    if check_id == "plugin-ci" or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", check_id):
+        fail(f"cannot dispatch public check as PHPUnit: {check_id}")
+    return "test_" + check_id.replace("-", "_")
+
+
+def phpunit_method_filter(component: object, check_id: str) -> str:
+    if not isinstance(component, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", component):
+        fail("fixture component cannot identify a PHPUnit class")
+    return rf"^{component}\\harness_contract_test::{check_method_name(check_id)}$"
+
+
+def phpunit_method_passed(returncode: int | None, timed_out: bool, output: str) -> bool:
+    if returncode != 0 or timed_out:
+        return False
+    clean_output = re.sub(r"\x1b\[[0-9;]*m", "", output).replace("\r", "")
+    summaries = re.findall(
+        r"(?m)^OK \((\d+) tests?, (\d+) assertions?\)\s*$",
+        clean_output,
+    )
+    return len(summaries) == 1 and summaries[0][0] == "1" and int(summaries[0][1]) > 0
+
+
+def install_qbank_redirect_capture(application_root: Path) -> None:
+    weblib = application_root / "lib" / "weblib.php"
+    source = weblib.read_text(encoding="utf-8")
+    marker = "    if (CLI_SCRIPT or AJAX_SCRIPT) {\n"
+    replacement = (
+        "    if (PHPUNIT_TEST) {\n"
+        "        $momopdatarget = $url instanceof moodle_url ? $url->out(false) : (string) $url;\n"
+        "        throw new \\Exception('MOMOPDA_REDIRECT:' . $momopdatarget);\n"
+        "    }\n\n"
+        + marker
+    )
+    if source.count(marker) != 1:
+        fail("pinned Moodle redirect contract differs from the qbank grader hook")
+    weblib.write_text(source.replace(marker, replacement), encoding="utf-8")
 
 
 def task_context(task_id: str) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
@@ -754,6 +825,13 @@ def run_generation(args: argparse.Namespace) -> dict[str, object]:
     command: list[str]
     client_version: str | None
     readonly_reference: Path | None = None
+    fake_overlay = args.fake_overlay.resolve() if args.fake_overlay is not None else None
+    if fake_overlay is not None:
+        if args.client != "fake":
+            fail("only the deterministic fake client accepts --fake-overlay")
+        if not fake_overlay.is_dir() or fake_overlay == ROOT.resolve() or fake_overlay.is_relative_to(ROOT.resolve()):
+            fail("fake overlays must be directories outside this repository")
+        tree_snapshot(fake_overlay)
 
     if args.client == "opencode" and not args.model:
         events: list[dict[str, object]] = []
@@ -780,6 +858,8 @@ def run_generation(args: argparse.Namespace) -> dict[str, object]:
                 "--outcome",
                 args.fake_outcome,
             ]
+            if fake_overlay is not None:
+                command.extend(["--overlay", str(fake_overlay)])
             client_version = f"fake/{sha256_bytes(FAKE_CLIENT.read_bytes())[:12]}"
         else:
             if args.moodle_source is None:
@@ -1035,7 +1115,8 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
     assert isinstance(workspace, dict)
     if workspace.get("output_sha256") != snapshot_hash(tree_snapshot(run_dir / "agent" / "plugin")):
         fail("generated workspace changed after execution was recorded")
-    graders = load_graders(load_contracts()[0])
+    tasks, fixtures, _ = load_contracts()
+    graders = load_graders(tasks)
     task_id = task["id"]
     assert isinstance(task_id, str)
     if task_id not in graders:
@@ -1044,6 +1125,13 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
         validate_record(record, task)
         write_json(run_dir / "run.json", record)
         return record
+    grader = graders[task_id]
+    assertion = grader_assertion_path(task_id, grader)
+    fixture_name = task.get("starting_fixture")
+    if not isinstance(fixture_name, str) or fixture_name not in fixtures:
+        fail(f"prepared task references an unknown fixture: {fixture_name}")
+    fixture = fixtures[fixture_name]
+    component = fixture.get("component")
     if path_lexists(run_dir / "grading"):
         fail("refusing to reuse an existing grading workspace")
 
@@ -1093,14 +1181,12 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
         "thirdpartylibs.xml",
         "phpunit.xml",
         "phpunit.xml.dist",
-        "tests/harness_contract_test.php",
     }
     generated_plugin = run_dir / "agent" / "plugin"
     present_controls = sorted(
         path.relative_to(generated_plugin).as_posix()
         for path in generated_plugin.rglob("*")
-        if path.is_file()
-        and (
+        if (
             path.name in prohibited_control_names
             or path.relative_to(generated_plugin).as_posix() == "tests/harness_contract_test.php"
         )
@@ -1130,8 +1216,12 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
     copy_tree(run_dir / "agent" / "plugin", plugin)
     tests_dir = plugin / "tests"
     tests_dir.mkdir(exist_ok=True)
-    shutil.copy2(FILTER_GRADER, tests_dir / FILTER_GRADER.name)
+    assertion_destination = tests_dir / "harness_contract_test.php"
+    if path_lexists(assertion_destination):
+        fail("generated plugin occupies the reserved grader assertion path")
+    shutil.copy2(assertion, assertion_destination)
     moodle = grading / "moodle"
+    application_root = moodle_application_root(moodle, moodle_revision.get("layout"))
     data = grading / "moodledata"
     grader_log = run_dir / "artifacts" / "grader.log"
     tools_log = run_dir / "artifacts" / "tools.log"
@@ -1206,9 +1296,20 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
         write_json(run_dir / "run.json", record)
         return record
 
+    destination = moodle_revision.get("destination")
+    if not isinstance(destination, str):
+        fail("prepared run has no plugin destination")
+    installed_plugin = moodle.joinpath(*safe_relative(destination, "plugin destination").parts)
+    if installed_plugin.is_symlink() or not installed_plugin.is_dir() or not (installed_plugin / "version.php").is_file():
+        set_all_checks(record, "error", f"plugin was not installed at the declared {destination} destination")
+        record["status"] = "error"
+        validate_record(record, task)
+        write_json(run_dir / "run.json", record)
+        return record
+
     site_install = [
         args.php,
-        str(moodle / "admin" / "cli" / "install_database.php"),
+        str(moodle_cli_root(moodle, moodle_revision.get("layout")) / "admin" / "cli" / "install_database.php"),
         "--lang=en",
         "--adminuser=admin",
         f"--adminpass={admin_password}",
@@ -1265,50 +1366,34 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
         "--fail-on-skipped",
         "--fail-on-warning",
     ]
-    modern_result, modern_timeout, modern_output = run_logged_command(
-        [
-            *phpunit_base,
-            "--filter",
-            r"^filter_momopda\\harness_contract_test::test_modern_contract$",
-            str(plugin),
-        ],
-        grader_log,
-        grading,
-        environment=grading_environment,
-    )
-    escaped_result, escaped_timeout, escaped_output = run_logged_command(
-        [
-            *phpunit_base,
-            "--filter",
-            r"^filter_momopda\\harness_contract_test::test_escaped_output$",
-            str(plugin),
-        ],
-        grader_log,
-        grading,
-        environment=grading_environment,
-    )
-    modern_passed = (
-        modern_result == 0
-        and not modern_timeout
-        and "OK (1 test, 6 assertions)" in modern_output
-    )
-    escaped_passed = (
-        escaped_result == 0
-        and not escaped_timeout
-        and "OK (1 test, 2 assertions)" in escaped_output
-    )
-    set_check(
-        record,
-        "modern-filter-class",
-        "pass" if modern_passed else "fail",
-        "Moodle runtime class and marker assertions passed" if modern_passed else "Moodle runtime class or marker assertions did not execute exactly once or failed; see artifacts/grader.log",
-    )
-    set_check(
-        record,
-        "escaped-output",
-        "pass" if escaped_passed else "fail",
-        "hostile localized replacement content was escaped" if escaped_passed else "escaped-output assertion did not execute exactly once or failed; see artifacts/grader.log",
-    )
+    if task_id == "qbank-bulk-action":
+        install_qbank_redirect_capture(application_root)
+    checks = task.get("public_checks")
+    assert isinstance(checks, list)
+    for check_id in checks[1:]:
+        assert isinstance(check_id, str)
+        result, timed_out, output = run_logged_command(
+            [
+                *phpunit_base,
+                "--filter",
+                phpunit_method_filter(component, check_id),
+                str(plugin),
+            ],
+            grader_log,
+            grading,
+            environment=grading_environment,
+        )
+        passed = phpunit_method_passed(result, timed_out, output)
+        set_check(
+            record,
+            check_id,
+            "pass" if passed else "fail",
+            (
+                f"{check_id} Moodle runtime assertions passed"
+                if passed
+                else f"{check_id} assertion did not execute exactly once or failed; see artifacts/grader.log"
+            ),
+        )
     statuses = {check["status"] for check in record["checks"] if isinstance(check, dict)}
     if "error" in statuses:
         record["status"] = "error"
@@ -1575,6 +1660,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("success", "control-file", "nonzero", "timeout", "malformed"),
         default="success",
     )
+    run.add_argument("--fake-overlay", type=Path, help="external deterministic fake-client overlay")
     run.add_argument("--opencode", default="opencode")
     run.add_argument("--model")
     run.add_argument("--variant")

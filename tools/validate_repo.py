@@ -545,6 +545,13 @@ def validate_evaluation_schemas(tasks: dict[object, dict[str, object]]) -> None:
     else:
         graders = registry["graders"]
         assert isinstance(graders, dict)
+        expected_graders = {"filter-modern-contract", "qbank-bulk-action"}
+        if set(graders) != expected_graders:
+            error(
+                "evals/public/graders.json: registered graders differ; "
+                f"missing={sorted(expected_graders - set(graders))}, "
+                f"extra={sorted(set(graders) - expected_graders)}"
+            )
         for task_id, grader in graders.items():
             task = tasks.get(task_id)
             if task is None or not isinstance(grader, dict):
@@ -554,13 +561,27 @@ def validate_evaluation_schemas(tasks: dict[object, dict[str, object]]) -> None:
                 error(f"evals/public/graders.json: grader {task_id} has an invalid versioned contract")
             if grader.get("checks") != task.get("public_checks"):
                 error(f"evals/public/graders.json: grader {task_id} does not implement every declared check")
+            checks = grader.get("checks")
+            if not isinstance(checks, list) or not checks or checks[0] != "plugin-ci":
+                error(f"evals/public/graders.json: grader {task_id} must declare plugin-ci first")
             assertion = grader.get("assertion")
             if not isinstance(assertion, str):
                 error(f"evals/public/graders.json: grader {task_id} needs an assertion path")
                 continue
-            assertion_path = (ROOT / assertion).resolve()
-            public_root = (ROOT / "evals" / "public").resolve()
-            if not assertion_path.is_relative_to(public_root) or not assertion_path.is_file():
+            relative = PurePosixPath(assertion)
+            expected = PurePosixPath(
+                "evals", "public", "graders", str(task_id), "harness_contract_test.php"
+            )
+            unsafe = (
+                not assertion
+                or "\\" in assertion
+                or relative.is_absolute()
+                or assertion != relative.as_posix()
+                or relative != expected
+                or any(part in {"", ".", ".."} for part in relative.parts)
+            )
+            assertion_path = ROOT.joinpath(*relative.parts)
+            if unsafe or assertion_path.is_symlink() or not assertion_path.is_file():
                 error(f"evals/public/graders.json: grader {task_id} assertion path is invalid")
 
     schema_path = ROOT / "evals" / "public" / "run-result.schema.json"

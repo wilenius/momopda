@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -201,6 +202,38 @@ class EvalHarnessTest(unittest.TestCase):
         self.assertEqual(1, summary_document["counts"]["timeout"])
         self.assertIsNone(summary_document["ranking"])
 
+    def test_fake_overlay_must_stay_external_and_is_recorded(self) -> None:
+        overlay = self.root / "overlay"
+        overlay.mkdir()
+        (overlay / "proof.php").write_text("<?php\n", encoding="utf-8")
+        run_dir = self.prepare("fake-overlay")
+        self.run_cli(
+            "run",
+            "--run-dir",
+            run_dir,
+            "--client",
+            "fake",
+            "--fake-overlay",
+            overlay,
+        )
+        record = self.record(run_dir)
+        self.assertEqual("succeeded", record["execution"]["status"])
+        self.assertTrue((run_dir / "agent" / "plugin" / "proof.php").is_file())
+        self.assertIn("proof.php", {change["path"] for change in record["workspace"]["changes"]})
+
+        rejected = self.prepare("fake-overlay-rejected")
+        result = self.run_cli(
+            "run",
+            "--run-dir",
+            rejected,
+            "--client",
+            "fake",
+            "--fake-overlay",
+            ROOT / "evals",
+            expected=1,
+        )
+        self.assertIn("outside this repository", result.stderr)
+
     def test_opencode_without_model_is_incomplete_not_pass(self) -> None:
         run_dir = self.prepare("skipped-real")
         self.run_cli("run", "--run-dir", run_dir, "--client", "opencode", "--timeout", "1")
@@ -269,6 +302,89 @@ class EvalHarnessTest(unittest.TestCase):
         for value in ("", ".", "../file", "classes/../file", "/absolute", "classes\\file"):
             with self.subTest(value=value), self.assertRaises(harness.HarnessError):
                 harness.safe_relative(value, "test")
+
+    def test_generic_grader_dispatch_and_layout(self) -> None:
+        harness = load_harness_module()
+        self.assertEqual("test_modern_filter_class", harness.check_method_name("modern-filter-class"))
+        self.assertEqual(
+            r"^qbank_momopda\\harness_contract_test::test_per_question_capability$",
+            harness.phpunit_method_filter("qbank_momopda", "per-question-capability"),
+        )
+        with self.assertRaises(harness.HarnessError):
+            harness.check_method_name("plugin-ci")
+        moodle = self.root / "moodle"
+        self.assertEqual(moodle, harness.moodle_application_root(moodle, "legacy"))
+        self.assertEqual(moodle / "public", harness.moodle_application_root(moodle, "public"))
+        self.assertEqual(moodle, harness.moodle_cli_root(moodle, "legacy"))
+        self.assertEqual(moodle, harness.moodle_cli_root(moodle, "public"))
+        with self.assertRaises(harness.HarnessError):
+            harness.moodle_application_root(moodle, "unknown")
+        with self.assertRaises(harness.HarnessError):
+            harness.moodle_cli_root(moodle, "unknown")
+
+    def test_phpunit_result_requires_one_real_test(self) -> None:
+        harness = load_harness_module()
+        self.assertTrue(harness.phpunit_method_passed(0, False, "OK (1 test, 1 assertion)\n"))
+        self.assertTrue(harness.phpunit_method_passed(0, False, "OK (1 test, 27 assertions)\n"))
+        for returncode, timed_out, output in (
+            (1, False, "OK (1 test, 1 assertion)\n"),
+            (0, True, "OK (1 test, 1 assertion)\n"),
+            (0, False, "OK (0 tests, 0 assertions)\n"),
+            (0, False, "OK (2 tests, 2 assertions)\n"),
+            (0, False, "OK (1 test, 0 assertions)\n"),
+            (0, False, "OK (1 test, 1 assertion)\nOK (1 test, 1 assertion)\n"),
+            (0, False, "No tests executed!\n"),
+        ):
+            with self.subTest(output=output, returncode=returncode, timed_out=timed_out):
+                self.assertFalse(harness.phpunit_method_passed(returncode, timed_out, output))
+
+    def test_runtime_grader_registry_is_closed_and_versioned(self) -> None:
+        harness = load_harness_module()
+        tasks, _, _ = harness.load_contracts()
+        valid = json.loads((ROOT / "evals" / "public" / "graders.json").read_text(encoding="utf-8"))
+        mutations = []
+
+        extra_top_level = copy.deepcopy(valid)
+        extra_top_level["extra"] = True
+        mutations.append(extra_top_level)
+
+        missing_version = copy.deepcopy(valid)
+        del missing_version["graders"]["filter-modern-contract"]["version"]
+        mutations.append(missing_version)
+
+        wrong_version = copy.deepcopy(valid)
+        wrong_version["graders"]["filter-modern-contract"]["version"] = 2
+        mutations.append(wrong_version)
+
+        wrong_checks = copy.deepcopy(valid)
+        wrong_checks["graders"]["filter-modern-contract"]["checks"] = ["plugin-ci"]
+        mutations.append(wrong_checks)
+
+        unsafe_assertion = copy.deepcopy(valid)
+        unsafe_assertion["graders"]["filter-modern-contract"]["assertion"] = "../grader.php"
+        mutations.append(unsafe_assertion)
+
+        for index, mutation in enumerate(mutations):
+            path = self.root / f"graders-{index}.json"
+            path.write_text(json.dumps(mutation), encoding="utf-8")
+            with self.subTest(index=index), mock.patch.object(harness, "GRADERS_PATH", path):
+                with self.assertRaises(harness.HarnessError):
+                    harness.load_graders(tasks)
+
+    def test_harness_hash_includes_every_registered_assertion(self) -> None:
+        harness = load_harness_module()
+        tasks, _, _ = harness.load_contracts()
+        graders = harness.load_graders(tasks)
+        self.assertEqual({"filter-modern-contract", "qbank-bulk-action"}, set(graders))
+        expected = {
+            harness.grader_assertion_path(task_id, grader)
+            for task_id, grader in graders.items()
+        }
+        self.assertTrue(expected)
+        paths = harness.harness_artifact_paths()
+        self.assertTrue(expected.issubset(set(paths)))
+        self.assertEqual(len(paths), len(set(paths)))
+        self.assertRegex(harness.harness_artifact_hash(), r"^[a-f0-9]{64}$")
 
     def test_record_validation_rejects_inconsistent_nested_values(self) -> None:
         harness = load_harness_module()

@@ -31,7 +31,7 @@ final class harness_contract_test extends \advanced_testcase {
     /**
      * Verifies the modern class contract and preserved marker behavior.
      */
-    public function test_modern_contract(): void {
+    public function test_modern_filter_class(): void {
         global $CFG;
 
         $this->resetAfterTest();

@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-08-19",
+  "reviewed_on": "2026-09-06",
   "reviewed_moodle_source": {
-    "revision": "e3e51a0613c4e370911f9c84db685acc7df791f1",
-    "release": "5.1dev+ (Build: 20250826)",
-    "comparison_tag": "v4.5.6"
+    "revision": "acfa383c13dd46c83ca82894a8e95fac273fda33",
+    "release": "5.2.2",
+    "comparison_tag": "v4.5.13"
   },
   "sources": [
     {
@@ -44,7 +44,17 @@
     },
     {
       "id": "qbank-contract",
-      "core_paths": ["question/bank/viewcreator", "question/classes/local/bank"],
+      "core_paths": [
+        "question/edit.php",
+        "question/editlib.php",
+        "question/classes/local/bank",
+        "question/templates/bulk_actions_ui.mustache",
+        "question/bank/bulkmove",
+        "question/bank/deletequestion/delete.php",
+        "question/bank/editquestion/classes/external/update_question_version_status.php",
+        "lib/questionlib.php",
+        "lib/sessionlib.php"
+      ],
       "fixture": "qbank_momopda"
     },
     {

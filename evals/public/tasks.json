@@ -18,8 +18,15 @@
       "plugin_type": "qbank",
       "starting_fixture": "qbank_momopda",
       "target_moodle": "5.2",
-      "prompt": "Add a bulk action that updates selected questions after confirmation and returns safely to the originating question bank.",
-      "public_checks": ["plugin-ci", "sesskey", "context-capability", "per-question-capability"]
+      "prompt": "Add a Moodle 5.2 question-bank bulk action gated by qbank/momopda:use. The first valid POST must show an explicit, non-mutating confirmation for the selected questions. A distinct confirmed POST must revalidate the sesskey, originating activity-backed bank context, action capability, and edit permission for every selected question before atomically marking exactly those question versions as draft. Successful and cancelled requests must return to a validated local originating question-bank URL, with a server-built local fallback for missing or unsafe targets.",
+      "public_checks": [
+        "plugin-ci",
+        "sesskey",
+        "context-capability",
+        "per-question-capability",
+        "confirmation",
+        "safe-return"
+      ]
     },
     {
       "id": "tiny-toolbar-button",
