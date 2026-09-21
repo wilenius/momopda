@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-09-06",
+  "reviewed_on": "2026-09-18",
   "reviewed_moodle_source": {
     "revision": "acfa383c13dd46c83ca82894a8e95fac273fda33",
     "release": "5.2.2",
@@ -69,7 +69,23 @@
     },
     {
       "id": "tiny-contract",
-      "core_paths": ["lib/editor/tiny/plugins/noautolink", "lib/editor/tiny/classes/manager.php"],
+      "core_paths": [
+        "lib/editor/tiny/classes/plugin.php",
+        "lib/editor/tiny/classes/plugin_with_buttons.php",
+        "lib/editor/tiny/classes/manager.php",
+        "lib/editor/tiny/amd/src/editor.js",
+        "lib/editor/tiny/amd/src/utils.js",
+        "lib/editor/tiny/plugins/noautolink",
+        "lib/editor/tiny/plugins/accessibilitychecker/amd/src/commands.js",
+        "lib/editor/tiny/plugins/equation/amd/src/equation.js",
+        "lib/amd/src/str.js",
+        ".grunt/tasks/javascript.js",
+        ".grunt/babel-plugin-add-module-to-define.js",
+        "package.json",
+        "npm-shrinkwrap.json",
+        ".nvmrc",
+        "lib/editor/tiny/js/tinymce/tinymce.js"
+      ],
       "fixture": "tiny_momopda"
     }
   ]

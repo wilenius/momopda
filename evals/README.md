@@ -53,7 +53,7 @@ python3 -I -B tools/eval_harness.py run \
 
 The source checkout must be at the pinned commit declared in `knowledge/compatibility.json`. The harness creates a read-only detached clone for the agent, disables external skill discovery and plugins, isolates OpenCode configuration, and denies shell and network tools. It does not use `--auto`.
 
-The two registered graders select their assertion through `public/graders.json`. `filter-modern-contract` requires PHP 8.1 and Moodle 4.5.13; `qbank-bulk-action` requires PHP 8.4 and Moodle 5.2.2. Both require Moodle Plugin CI 4.5.11, Composer 2, a boundary-compatible Node.js with `npm`/`npx`, the PostgreSQL client, and an empty reachable PostgreSQL database server. Generated plugin code is untrusted and grading must run on a disposable CI worker or container with no provider credentials and no sensitive writable mounts. The harness strips the inherited environment, uses a dedicated home and temporary directory, rejects candidate-owned grader control files, and terminates timed-out process groups. It creates a unique database name and fresh Moodle, Moodledata, and plugin trees for every run:
+The three registered graders select their assertion through `public/graders.json`. `filter-modern-contract` requires PHP 8.1 and Moodle 4.5.13; `qbank-bulk-action` and `tiny-toolbar-button` require PHP 8.4 and Moodle 5.2.2. All require Moodle Plugin CI 4.5.11, Composer 2, `node` with `npm`/`npx`, the PostgreSQL client, and an empty reachable PostgreSQL database server. Generated plugin code is untrusted and grading must run on a disposable CI worker or container with no provider credentials and no sensitive writable mounts. The harness strips the inherited environment, uses a dedicated home and temporary directory, rejects candidate-owned grader control files, and terminates timed-out process groups. It creates a unique database name and fresh Moodle, Moodledata, and plugin trees for every run:
 
 ```bash
 python3 -I -B tools/eval_harness.py grade \
@@ -90,8 +90,23 @@ tools/run_qbank_grader.sh "$run"
 python3 -I -B tools/eval_harness.py validate "$run"
 ```
 
+The third runner uses the same pinned Moodle 5.2.2/PHP 8.4/Node 22/PostgreSQL 17.11 boundary and accepts only `tiny-toolbar-button`. In addition to Plugin CI, it performs a clean component-scoped Grunt build in a disposable Moodle copy and executes the submitted AMD through a dependency-free Node shim to verify manager advertisement, synchronous registration after localization, `content` toolbar placement, command dispatch, and exact semantic insertion:
+
+```bash
+run=/tmp/momopda-evals/tiny-fake-001
+python3 -I -B tools/eval_harness.py prepare \
+    --task tiny-toolbar-button \
+    --condition none \
+    --output "$run"
+python3 -I -B tools/eval_harness.py run \
+    --run-dir "$run" \
+    --client fake
+tools/run_tiny_grader.sh "$run"
+python3 -I -B tools/eval_harness.py validate "$run"
+```
+
 For deterministic grader development only, the fake client can apply an external overlay with `--fake-overlay /outside/repository/overlay`. The harness rejects repository-contained overlays and rejects this option for OpenCode, so an external known-good implementation or mutation is never exposed to a model request.
 
-Moodle 5.2's web root is `public/`, including the plugin destination `public/question/bank/momopda`. Non-web CLI scripts remain at the checkout root, so site installation uses `admin/cli/install_database.php`. Moodle URLs never include `/public`.
+Moodle 5.2's web root is `public/`, including the plugin destinations `public/question/bank/momopda` and `public/lib/editor/tiny/plugins/momopda`. Non-web CLI scripts remain at the checkout root, so site installation uses `admin/cli/install_database.php`. Moodle URLs and AMD module names never include `/public`.
 
 Run records conform to `public/run-result.schema.json`. Event, stderr, grader, and tool logs remain outside the agent workspace. Summaries consume saved records only and do not rank skill conditions from a single sample.

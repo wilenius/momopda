@@ -17,6 +17,17 @@
         "safe-return"
       ],
       "assertion": "evals/public/graders/qbank-bulk-action/harness_contract_test.php"
+    },
+    "tiny-toolbar-button": {
+      "version": 1,
+      "checks": [
+        "plugin-ci",
+        "amd-build",
+        "plugin-manager-registration",
+        "localized-tooltip",
+        "semantic-insertion"
+      ],
+      "assertion": "evals/public/graders/tiny-toolbar-button/harness_contract_test.php"
     }
   }
 }

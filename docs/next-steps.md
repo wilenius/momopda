@@ -5,8 +5,8 @@ This document is the context-clear handoff for the modernization work started on
 ## Repository State
 
 - Branch: `feature/agent-skills-conversion`.
-- The commit containing this handoff completes the Immediate Milestone and the `qbank-bulk-action` second public slice.
-- The expected worktree after that commit is clean. Inspect `git status` before editing, preserve any later user changes, and do not reset or overwrite them.
+- The current worktree completes the `tiny-toolbar-button` third public slice described below; it has not been committed or pushed.
+- The worktree may contain pre-existing user files. Inspect `git status` before editing, preserve later user changes, and do not reset or overwrite them.
 - The completed milestone commit has not been pushed. Do not add moving-branch or Moodle `main` canaries until the hosted pinned boundary jobs are green.
 - Do not restore the deleted old skill files or the tracked `tags` artifact.
 - Do not modify or discard unrelated user changes.
@@ -210,19 +210,17 @@ All deterministic artifacts are below `/tmp/opencode/momopda-qbank-milestone-202
 
 No grader was implemented, registered, tested, or containerized for `tiny-toolbar-button`, `activity-schema-upgrade`, `local-external-function`, `qtype-safe-rendering`, `report-portable-query`, or `enrol-instance-ui`.
 
-## Next Milestone
+## Completed Third Slice
 
-Implement `tiny-toolbar-button` as the third and only next public vertical slice on pinned Moodle 5.2.2. Do not start a fourth grader, repeated comparison campaign, private holdout, moving-branch canary, or real-model sample in this slice.
+`tiny-toolbar-button` is now the third public vertical slice on pinned Moodle 5.2.2. No fourth grader, repeated comparison campaign, private holdout, moving-branch canary, or real-model sample was started.
 
 ### Contract Freeze
 
-The current prompt says "fixed semantic element" without defining the element, markup, selection behavior, button identity, toolbar placement, or language-string key. It also promises insertion behavior while the declared checks omit it. Do not write a grader against that ambiguity.
-
-Use this recommended deterministic contract unless exact pinned source disproves it:
+The contract was frozen on 18 September 2026 after inspecting Moodle `v5.2.2` at `acfa383c13dd46c83ca82894a8e95fac273fda33` and its shipped TinyMCE 8.2.2 source:
 
 > Add a `tiny_momopda` TinyMCE toolbar button, advertise it as `tiny_momopda/tiny_momopda`, place it in the `content` toolbar section, and localize its tooltip through `tiny_momopda/buttontitle`. Activating the button must execute the `mceMomopdaInsertMarker` command, which uses `editor.insertContent()` to insert exactly `<mark class="tiny_momopda-marker">MoMoPDA</mark>` at the current selection.
 
-Change the ordered public checks to:
+The ordered public checks are:
 
 ```json
 [
@@ -234,114 +232,92 @@ Change the ordered public checks to:
 ]
 ```
 
-The first implementation step is to verify and record this contract against Moodle `v5.2.2` at `acfa383c13dd46c83ca82894a8e95fac273fda33`. The exact static `mark` element makes the result language-neutral, deterministic, safe from selected-content interpolation, and observable through the built AMD module and TinyMCE DOM. Every behavior promised by the frozen prompt must map to one declared check.
+Every behavior promised by the prompt maps to an executable check. The static marker is language-neutral, does not interpolate selected content, and is tested through the submitted AMD rather than source matching.
 
-### Starting State
+### Pinned Source Evidence
 
-- The task starts from the complete unsolved `skills/moodle-plugin-development/assets/fixtures/tiny_momopda` fixture and has no setup overlay.
-- `classes/plugininfo.php` extends `editor_tiny\plugin` but implements no feature interface. It does not advertise a button.
-- `amd/src/plugin.js` registers only the plugin metadata callback. It has no button, command, toolbar configuration, localization, or insertion behavior.
-- The fixture already declares `tiny/momopda:use` and ships matching loader-only `plugin.min.js` and source-map artifacts.
-- The fixture must remain unsolved. Generated candidates, not the canonical asset, implement the task.
-- Moodle 5.2.2 uses TinyMCE 8.2.2, Node `>=22.11.0 <23`, PHP 8.4, and the `public/` web root. The physical destination is `public/lib/editor/tiny/plugins/momopda`; Moodle module names and URLs never include `/public`.
-- The final grader registry for this slice must contain exactly `filter-modern-contract`, `qbank-bulk-action`, and `tiny-toolbar-button`.
+The following exact contracts were inspected in the pinned checkout:
 
-### Pinned Source Work
-
-Inspect these exact contracts before changing task guidance or grader code:
-
-- `public/lib/editor/tiny/classes/plugin.php`
-- `public/lib/editor/tiny/classes/plugin_with_buttons.php`
+- `public/lib/editor/tiny/classes/plugin.php` and `plugin_with_buttons.php`
 - `public/lib/editor/tiny/classes/manager.php`
-- `public/lib/editor/tiny/amd/src/editor.js`
-- `public/lib/editor/tiny/amd/src/utils.js`
-- `public/lib/editor/tiny/plugins/noautolink/classes/plugininfo.php`
-- `public/lib/editor/tiny/plugins/noautolink/amd/src/common.js`
-- `public/lib/editor/tiny/plugins/noautolink/amd/src/commands.js`
-- `public/lib/editor/tiny/plugins/noautolink/amd/src/configuration.js`
-- `public/lib/editor/tiny/plugins/noautolink/amd/src/plugin.js`
+- `public/lib/editor/tiny/amd/src/editor.js` and `utils.js`
+- `public/lib/editor/tiny/plugins/noautolink` PHP and AMD registration files
 - `public/lib/editor/tiny/plugins/accessibilitychecker/amd/src/commands.js`
 - `public/lib/editor/tiny/plugins/equation/amd/src/equation.js`
 - `public/lib/amd/src/str.js`
-- `.grunt/tasks/javascript.js`
-- `.grunt/babel-plugin-add-module-to-define.js`
+- `.grunt/tasks/javascript.js` and `.grunt/babel-plugin-add-module-to-define.js`
 - `package.json`, `npm-shrinkwrap.json`, and `.nvmrc`
-- The shipped TinyMCE 8.2.2 `editor.insertContent()` and deprecated `selection.setContent()` implementations
+- Shipped TinyMCE 8.2.2 insertion code and its `selection.setContent()` deprecation warning
 
-Confirm the PHP button interface, real manager configuration shape, AMD default-export promise shape, synchronous `PluginManager.add()` callback, asynchronous string loading boundary, toolbar configuration API, command/button APIs, supported insertion method, build output/module naming, source-map expectations, and exact Node/npm versions. Core `tiny_noautolink` is the closest registration model, but its use of deprecated `selection.setContent()` must not be copied; TinyMCE 8 directs new code to `editor.insertContent()`.
+This confirmed manager discovery through `plugin_with_buttons`, fully qualified PHP button identifiers, the default-export promise and optional configuration tuple, synchronous `PluginManager.add()` registration after asynchronous dependencies settle, named toolbar configuration, command/button APIs, generated AMD names, source-map output, Node `>=22.11.0 <23`, and `editor.insertContent()` as the supported insertion API.
 
-Update `skills/moodle-plugin-development/references/type-tiny.md`, `skills/moodle-plugin-development/references/frontend.md`, and `knowledge/sources.json` only with general source-backed guidance. Cover the PHP button interface, module promise tuple, pre-registration localization, configuration-based toolbar placement, supported insertion API, build/source-map freshness, and `public/` filesystem distinction. Do not add grader details, the frozen marker markup, or an exemplar solution to the skill.
+`skills/moodle-plugin-development/references/type-tiny.md`, `skills/moodle-plugin-development/references/frontend.md`, and `knowledge/sources.json` contain only general source-backed guidance. They do not contain the frozen marker, grader internals, or an exemplar.
 
-### Harness Boundary
+### Fixture And Harness
 
-Keep the existing generic grader architecture. The registry already selects and hashes each assertion, layout handling already supports Moodle 5.2, and each non-Plugin-CI check already maps to one exact PHPUnit method. Make only changes concretely required by executable Tiny grading:
-
-1. Add `node` to grading prerequisite detection because Tiny checks execute built JavaScript directly.
-2. Update the repository validator and offline registry expectation from exactly two graders to exactly three only when the Tiny assertion is ready to register.
-3. Keep the result schema, filter grader, qbank grader, and existing runners unchanged unless a reproduced regression requires a minimal fix.
-4. Run every Tiny check after earlier failures and preserve `error`, `incomplete`, `fail`, and timeout semantics.
-5. Continue rejecting candidate-owned Plugin CI/PHPUnit controls before installation and never expose the assertion or JavaScript probe to the generating agent.
-
-Adding the third assertion changes the global harness artifact hash. Prepare fresh external proof runs after registration; do not reuse records prepared against the two-grader artifact.
+- The complete canonical `tiny_momopda` fixture remains loader-only and unchanged. It has no button interface, button, toolbar configuration, localized tooltip, command, or insertion behavior.
+- The task prompt now states the exact button, advertised identifier, toolbar section, language key, command, API, markup, and selection behavior.
+- `semantic-insertion` is the fifth explicit check.
+- `node` is now a generic grading prerequisite; result schemas, dispatch, status semantics, filter/qbank assertions, and existing runners are unchanged.
+- The repository validator and offline hash test expect exactly three closed, versioned grader mappings.
+- The Tiny assertion was added before registry activation, so every fresh run hashes all three assertions.
 
 ### Tiny Grader
 
-Add `evals/public/graders/tiny-toolbar-button/harness_contract_test.php`, then and only then register `tiny-toolbar-button`. Its exact methods are `test_amd_build`, `test_plugin_manager_registration`, `test_localized_tooltip`, and `test_semantic_insertion`.
+`evals/public/graders/tiny-toolbar-button/harness_contract_test.php` implements four exact PHPUnit methods:
 
-The grader must establish these executable outcomes:
+- `test_amd_build` requires one `.min.js` and `.min.js.map` per source, performs a clean component-scoped Grunt build in a disposable shared clone, and byte-compares the entire generated build tree without modifying the candidate workspace.
+- `test_plugin_manager_registration` checks `plugin_with_buttons`, exact PHP advertisement, and a real manager configuration. It then executes the submitted built module with a dependency-free Node `vm`/AMD loader that supports single-file and modular plugin designs, verifies one `tiny_momopda/plugin` registration and one regular button, and applies returned configuration to a real-shaped `content` toolbar.
+- `test_localized_tooltip` verifies the language key, delays only a mocked `tiny_momopda/buttontitle` sentinel, proves registration waits for it, and checks the submitted button tooltip.
+- `test_semantic_insertion` invokes the registered command with collapsed and ranged selection states, invokes the button action, requires exact `mceMomopdaInsertMarker` dispatch, rejects `selection.setContent()`, and requires one exact `editor.insertContent()` call with the frozen marker.
 
-- `plugin-ci`: non-fixing `phplint`, zero-warning `codechecker`, `validate`, zero-warning `phpdoc`, and `savepoints` all run.
-- `amd-build`: every AMD source has shipped `.min.js` and `.min.js.map` artifacts; a clean component-scoped Grunt build on a disposable copy passes with zero warnings and reproduces the submitted build and source maps without fixing the candidate workspace in place.
-- `plugin-manager-registration`: `plugininfo` implements `plugin_with_buttons`, advertises exactly `tiny_momopda/tiny_momopda`, and a real Moodle manager configuration exposes it. Execute the submitted built AMD through a dependency-free Node `vm`/AMD shim; its promise must register `tiny_momopda/plugin`, register exactly one `tiny_momopda` button, and return configuration that adds it to the `content` toolbar.
-- `localized-tooltip`: inject a sentinel translation through a mocked `core/str` dependency, prove string loading settles before synchronous plugin registration, and prove the button tooltip equals the sentinel rather than a hard-coded English value.
-- `semantic-insertion`: execute the built module's registered command and button action against a fake editor, prove the action calls the named command, and prove the command calls `editor.insertContent()` exactly once with the frozen `mark` element. Where practical, add a credential-free local browser assertion against shipped TinyMCE 8.2.2 for collapsed and ranged selections; do not substitute source-string matching for runtime behavior.
+The runtime tests discover behavior from `tiny_momopda/plugin` and PHP advertisement; they do not assume candidate helper filenames or inspect source strings.
 
-Prototype execution of the built AMD artifacts before finalizing the assertion. The probe must support a candidate's valid single-file or modular AMD design and discover behavior through the declared PHP button and built plugin module rather than assuming candidate helper filenames. If a browser check is required, use only a local disposable page, shipped TinyMCE, and a pinned browser; no Moodle credentials or network service may be required.
+### Disposable Worker
 
-### Disposable Moodle 5.2 Runner
+`tools/tiny-grader.Dockerfile` and `tools/run_tiny_grader.sh` provide a Tiny-only worker with digest-pinned PHP 8.4.24, Composer 2, Node 22.11.0/npm 10.9.0, PostgreSQL client 15.19, Python 3.11, Moodle Plugin CI 4.5.11, and a fresh digest-pinned PostgreSQL 17.11 server.
 
-Add a separate `tools/tiny-grader.Dockerfile` and `tools/run_tiny_grader.sh`. Do not weaken the task guards in the filter or qbank runners.
+The runner accepts only `tiny-toolbar-button`; verifies the exact task boundary, Moodle tag and commit, PHP, Node/npm, PostgreSQL, checkout-root CLI installer, `public/` web root, and `public/lib/editor/tiny/plugins/momopda` destination; mounts the repository read-only and only the external run root writable; uses container tmpfs; receives no provider credentials; drops all capabilities; sets `no-new-privileges`; and accepts only terminal `pass` or `fail` checks.
 
-The worker must provide digest-pinned PHP 8.4, Composer 2, Node 22.11.0 with npm/npx 10.9.0, Git, PostgreSQL client 15.19, Python, Moodle Plugin CI 4.5.11, and a fresh digest-pinned PostgreSQL 17.11 server. Reuse the established isolation model: read-only repository mount, only the external run root writable, container-only tmpfs state, no provider credentials, dropped capabilities, `no-new-privileges`, cleanup traps, and terminal enforcement that every declared check ends `pass` or `fail`.
+### Deterministic Proof
 
-The runner must reject tasks other than `tiny-toolbar-button` and verify Moodle `v5.2.2`, commit `acfa383c13dd46c83ca82894a8e95fac273fda33`, PHP 8.4, Node/npm versions, PostgreSQL 17.11, the checkout-root CLI installer, the `public/` web root, and physical plugin destination before accepting a run as evidence.
+All proof artifacts are under `/tmp/opencode/momopda-tiny-milestone-20260918`, outside the repository. Disposable grading trees were removed after validation; concise logs, records, external overlays, probes, and the summary remain outside the repository.
 
-### Ordered Delivery
+- `tiny-fixture-verified`: the unchanged fixture passed Plugin CI and reproducible AMD build checks, reached all five checks, and ended `fail` on the three missing runtime behaviors.
+- `tiny-known-good-verified`: an external known-good implementation passed Plugin CI and all four behavioral/build checks.
+- `mutation-stale-source-build-verified` and `mutation-missing-map-verified` failed only `amd-build`; all submitted-AMD runtime checks still passed.
+- `mutation-php-only-advertisement-verified` and `mutation-plugin-only-registration-verified` discriminated missing AMD behavior and missing PHP manager advertisement respectively.
+- `mutation-missing-toolbar-placement-verified` failed only `plugin-manager-registration`.
+- `mutation-hard-coded-tooltip-verified` failed only `localized-tooltip`.
+- `mutation-missing-command-dispatch-verified`, `mutation-deprecated-insertion-verified`, and `mutation-wrong-markup-verified` failed only `semantic-insertion`.
+- `filter-regression-verified` and `qbank-regression-verified` used fresh runs against the three-grader artifact, reached every declared check, and retained terminal `fail` semantics on Moodle 4.5.13/PHP 8.1 and Moodle 5.2.2/PHP 8.4 respectively.
+- `deterministic-summary.json`: 13 records, one pass, 12 expected failures, zero errors, zero incomplete runs, zero timeouts, and `ranking: null`.
+- No real-model sample was run.
 
-1. Freeze the exact button, command, toolbar section, language key, markup, selection behavior, and five-check task contract.
-2. Reinspect pinned Moodle/TinyMCE evidence and update only general source guidance.
-3. Prototype a dependency-free runtime probe against the unchanged fixture and an external implementation before coupling it to PHPUnit.
-4. Add only the Node prerequisite and three-grader validation changes needed by this slice; keep filter and qbank offline behavior green.
-5. Add the Tiny assertion and only then register `tiny-toolbar-button` as the third grader.
-6. Add the Tiny-only disposable worker and prove the unchanged fake fixture reaches every check and ends `pass` or `fail`, never infrastructure `error` or prerequisite `incomplete`.
-7. Build a known-good implementation outside the repository and prove all checks pass.
-8. Run external mutations for stale or missing builds/maps, PHP-only advertisement, plugin-only registration, missing toolbar placement, hard-coded tooltip, missing/wrong command dispatch, deprecated or absent insertion, and wrong markup. Each mutation must fail its intended check while later checks still execute.
-9. Re-run fresh filter and qbank disposable fake regressions after the global artifact hash changes.
-10. Update offline tests, repository validation, evaluation documentation, and this handoff; run final verification from the resulting tree.
+### Completed Acceptance
 
-Do not run real-model candidate/released/no-skill samples until the unchanged fixture produces a real `pass`/`fail`, the known-good external implementation passes, and the mutation suite demonstrates discrimination. Model sampling remains optional and requires a separate explicit decision after deterministic proof; never rank a single sample.
-
-### Acceptance
-
-- The task has one exact semantic insertion and every prompt promise has a declared executable check.
-- `graders.json` contains exactly three mappings with ordered checks matching their tasks.
-- The canonical Tiny fixture remains unsolved and unchanged.
-- The worker uses only the pinned Moodle 5.2.2/PHP 8.4/Node 22/PostgreSQL 17.11 boundary with fresh mutable state.
-- The unchanged fixture reaches every check, the external known-good implementation passes, and each targeted mutation fails the intended runtime/build check.
-- Submitted built AMD, not source alone, drives registration, localization, toolbar, command, and insertion assertions.
-- Grunt proves distributable source/build/source-map consistency without modifying the candidate workspace.
-- Filter and qbank slices remain regression-free with unchanged status semantics.
-- Generated workspaces, Moodle trees, records, logs, probes, browser state, exemplars, and mutation candidates remain outside the repository.
-- No credentials, hidden reasoning, grader implementation, or exemplar reaches a generating agent.
-- No fourth grader or real-model campaign is started.
+- `graders.json` contains exactly `filter-modern-contract`, `qbank-bulk-action`, and `tiny-toolbar-button`, with ordered checks matching their tasks.
+- Submitted built AMD drives registration, localization, toolbar, command, and insertion assertions.
+- Grunt proves source/build/source-map freshness in a disposable copy.
+- The canonical Tiny fixture is unchanged and unsolved.
+- The worker uses only the pinned Moodle 5.2.2/PHP 8.4/Node 22/PostgreSQL 17.11 boundary with unique mutable Moodledata and database state.
+- The fixture returns real `pass`/`fail` outcomes, the external known-good passes, and each targeted mutation is discriminated while later methods execute.
+- Filter and qbank behavior remains stable after the global artifact hash changed.
+- Generated workspaces, Moodle trees, records, logs, probes, exemplars, browser state, and mutations remain outside the repository.
+- No credentials, hidden reasoning, assertion, probe, or exemplar reached a generating agent.
+- No fourth grader or model campaign was started.
 
 ### Scope Guard
 
-Do not implement, register, test, or containerize graders for `activity-schema-upgrade`, `local-external-function`, `qtype-safe-rendering`, `report-portable-query`, or `enrol-instance-ui` in this milestone.
+No grader was implemented, registered, tested, or containerized for `activity-schema-upgrade`, `local-external-function`, `qtype-safe-rendering`, `report-portable-query`, or `enrol-instance-ui`.
+
+## Next Milestone
+
+Implement `activity-schema-upgrade` as the fourth and only next public vertical slice on pinned Moodle 4.5.13. First freeze one deterministic fresh-install and upgrade contract against exact pinned core and the unsolved `mod_momopda` fixture. Do not register it until its assertion is executable, and do not start a fifth grader, comparison campaign, private holdout, moving-branch canary, or real-model sample in that slice.
 
 ## Later Milestones
 
-1. Implement deterministic graders for the remaining five public tasks, one vertical slice at a time.
+1. After `activity-schema-upgrade`, implement deterministic graders for the remaining four public tasks, one vertical slice at a time.
 2. Run repeated candidate/released/no-skill comparisons without ranking single samples.
 3. Create the separate private holdout repository for hidden prompts, tests, expected outcomes, and mutation cases.
 4. Add source-path change tracking for selected Moodle contracts.
@@ -363,4 +339,4 @@ Do not implement, register, test, or containerize graders for `activity-schema-u
 
 Use this prompt after clearing context:
 
-> Read `docs/next-steps.md` and implement the `tiny-toolbar-button` Next Milestone only. Inspect the worktree before editing and preserve any user changes. First freeze one deterministic Moodle 5.2.2/TinyMCE 8.2.2 contract using the recommended `tiny_momopda` content-toolbar button, localized `buttontitle`, `mceMomopdaInsertMarker` command, and exact `<mark class="tiny_momopda-marker">MoMoPDA</mark>` insertion unless pinned source disproves it; add an explicit `semantic-insertion` check so every prompt promise is graded. Keep the generic filter/qbank harness behavior stable, then build executable shipped-AMD build, manager/toolbar registration, localized-tooltip, command, and insertion checks in a credential-free PHP 8.4/Node 22/PostgreSQL 17.11 disposable worker. Register no fourth grader. Do not run real-model samples until the unchanged fixture returns a real pass/fail, an external known-good implementation passes, and targeted build/runtime mutations fail as intended. Keep generated workspaces, Moodle trees, records, logs, probes, browser state, exemplars, and mutation candidates outside the repository, and carry the work through regression validation and an updated handoff.
+> Read `docs/next-steps.md` and implement the `activity-schema-upgrade` Next Milestone only. Inspect the worktree before editing and preserve any user changes. First freeze one deterministic Moodle 4.5.13 contract for the required setting, fresh-install schema, form/save behavior, upgrade default, plugin version transition, and savepoint against exact pinned core and the unsolved `mod_momopda` fixture; ensure every prompt promise maps to an executable check before writing the grader. Keep all three existing graders and runners stable, add a separate credential-free PHP 8.1/PostgreSQL 17.11 worker, and register no fifth grader. Do not run real-model samples until the unchanged fixture returns a real pass/fail, an external known-good implementation passes, and targeted fresh-install/upgrade mutations fail as intended. Keep all generated workspaces, Moodle trees, records, logs, exemplars, and mutation candidates outside the repository, and carry the work through regression validation and an updated handoff.

@@ -545,7 +545,11 @@ def validate_evaluation_schemas(tasks: dict[object, dict[str, object]]) -> None:
     else:
         graders = registry["graders"]
         assert isinstance(graders, dict)
-        expected_graders = {"filter-modern-contract", "qbank-bulk-action"}
+        expected_graders = {
+            "filter-modern-contract",
+            "qbank-bulk-action",
+            "tiny-toolbar-button",
+        }
         if set(graders) != expected_graders:
             error(
                 "evals/public/graders.json: registered graders differ; "

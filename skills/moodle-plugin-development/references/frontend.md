@@ -6,9 +6,9 @@ Prefer output classes and Mustache templates for non-trivial UI. Use Moodle's co
 
 ## JavaScript
 
-Write AMD source modules under `amd/src` using the APIs available in the target Moodle version. Ship generated `amd/build` files in distributable plugins. Do not hand-edit generated files except in a fixture explicitly testing the loader contract.
+Write AMD source modules under `amd/src` using the APIs available in the target Moodle version. Ship a generated `.min.js` and `.min.js.map` for each module in distributable plugins. Before release, use the target branch's Node version and a clean component-scoped Grunt build to prove that source, build output, and source maps are current. Do not hand-edit generated files except in a fixture explicitly testing the loader contract.
 
-Use Moodle modules for strings, AJAX, notifications, modals, templates, and pending-state tracking. Do not introduce jQuery into new code. Await asynchronous data before invoking APIs that require synchronous registration, including TinyMCE's `PluginManager.add()` callback.
+Use Moodle modules for strings, AJAX, notifications, modals, templates, and pending-state tracking. Do not introduce jQuery into new code. Await asynchronous data before invoking APIs that require synchronous registration, including TinyMCE's `PluginManager.add()` callback. Keep editor toolbar placement in the plugin's returned configuration rather than relying on registration order.
 
 ## Styling
 

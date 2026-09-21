@@ -33,8 +33,14 @@
       "plugin_type": "tiny",
       "starting_fixture": "tiny_momopda",
       "target_moodle": "5.2",
-      "prompt": "Add a localized TinyMCE toolbar button that inserts a fixed semantic element at the current selection.",
-      "public_checks": ["plugin-ci", "amd-build", "plugin-manager-registration", "localized-tooltip"]
+      "prompt": "Add a tiny_momopda TinyMCE toolbar button, advertise it as tiny_momopda/tiny_momopda, place it in the content toolbar section, and localize its tooltip through tiny_momopda/buttontitle. Activating the button must execute the mceMomopdaInsertMarker command, which uses editor.insertContent() to insert exactly <mark class=\"tiny_momopda-marker\">MoMoPDA</mark> at the current selection.",
+      "public_checks": [
+        "plugin-ci",
+        "amd-build",
+        "plugin-manager-registration",
+        "localized-tooltip",
+        "semantic-insertion"
+      ]
     },
     {
       "id": "activity-schema-upgrade",

@@ -32,6 +32,7 @@ TERMINAL_STATUSES = {"pass", "fail", "error", "timeout", "incomplete"}
 CHECK_STATUSES = {"pass", "fail", "error", "incomplete"}
 EXECUTION_STATUSES = {"succeeded", "client_error", "timeout", "malformed", "skipped"}
 SECRET_KEY_PATTERN = re.compile(r"(?i)(auth|api.?key|password|secret|token)")
+GRADING_PREREQUISITES = ("composer", "git", "node", "npm", "npx", "psql")
 SECRET_VALUE_KEY_PATTERN = re.compile(
     r"(?i)^(?:authorization|authentication|apikey|password|secret|access_?token|refresh_?token|id_?token|token)$"
 )
@@ -1200,7 +1201,7 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
         return record
     missing_tools = [
         tool
-        for tool in ("composer", "git", "npm", "npx", "psql")
+        for tool in GRADING_PREREQUISITES
         if shutil.which(tool) is None
     ]
     if missing_tools:

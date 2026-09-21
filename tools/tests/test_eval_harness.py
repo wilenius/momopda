@@ -306,6 +306,8 @@ class EvalHarnessTest(unittest.TestCase):
     def test_generic_grader_dispatch_and_layout(self) -> None:
         harness = load_harness_module()
         self.assertEqual("test_modern_filter_class", harness.check_method_name("modern-filter-class"))
+        self.assertEqual("test_semantic_insertion", harness.check_method_name("semantic-insertion"))
+        self.assertIn("node", harness.GRADING_PREREQUISITES)
         self.assertEqual(
             r"^qbank_momopda\\harness_contract_test::test_per_question_capability$",
             harness.phpunit_method_filter("qbank_momopda", "per-question-capability"),
@@ -375,7 +377,10 @@ class EvalHarnessTest(unittest.TestCase):
         harness = load_harness_module()
         tasks, _, _ = harness.load_contracts()
         graders = harness.load_graders(tasks)
-        self.assertEqual({"filter-modern-contract", "qbank-bulk-action"}, set(graders))
+        self.assertEqual(
+            {"filter-modern-contract", "qbank-bulk-action", "tiny-toolbar-button"},
+            set(graders),
+        )
         expected = {
             harness.grader_assertion_path(task_id, grader)
             for task_id, grader in graders.items()
