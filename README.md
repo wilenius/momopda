@@ -89,7 +89,7 @@ It never runs a code fixer. Missing Moodle-dependent checks produce an incomplet
 
 ## Evaluations
 
-Public smoke tasks and the holdout-suite design are documented in [`evals/`](evals/README.md). Deterministic graders should run before any blinded model judgment. The roadmap is in [`docs/roadmap.md`](docs/roadmap.md), and the context-clear implementation handoff is in [`docs/next-steps.md`](docs/next-steps.md).
+Public smoke tasks and the holdout-suite design are documented in [`evals/`](evals/README.md). Deterministic graders should run before any blinded model judgment. The roadmap is in [`docs/roadmap.md`](docs/roadmap.md), the context-clear implementation handoff is in [`docs/next-steps.md`](docs/next-steps.md), and completed milestone detail is in [`docs/history.md`](docs/history.md).
 
 ## License
 
