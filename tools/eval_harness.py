@@ -128,6 +128,17 @@ def copy_tree(source: Path, destination: Path) -> dict[str, str]:
     return expected
 
 
+def isolate_phpunit_assertion(plugin: Path, assertion: Path) -> None:
+    """Replace submitted tests with the selected public runtime assertion."""
+    tests = plugin / "tests"
+    if path_lexists(tests):
+        if tests.is_symlink() or not tests.is_dir():
+            fail(f"plugin tests path is not a regular directory: {tests}")
+        shutil.rmtree(tests)
+    tests.mkdir()
+    shutil.copy2(assertion, tests / "harness_contract_test.php")
+
+
 def apply_overlay(source: Path, destination: Path) -> None:
     tree_snapshot(source)
     for path in sorted(source.rglob("*")):
@@ -1356,6 +1367,11 @@ def grade_run(args: argparse.Namespace) -> dict[str, object]:
         "pass" if plugin_ci_passed else "fail",
         "all non-fixing Plugin CI checks passed" if plugin_ci_passed else "one or more Plugin CI checks failed; see artifacts/tools.log",
     )
+
+    # PHPUnit discovers every submitted test before applying --filter. Keep candidate
+    # tests available to Plugin CI, then remove them from the behavioral-test boundary.
+    isolate_phpunit_assertion(plugin, assertion)
+    isolate_phpunit_assertion(installed_plugin, assertion)
 
     phpunit_base = [
         str(plugin_ci),

@@ -546,6 +546,7 @@ def validate_evaluation_schemas(tasks: dict[object, dict[str, object]]) -> None:
         graders = registry["graders"]
         assert isinstance(graders, dict)
         expected_graders = {
+            "activity-schema-upgrade",
             "filter-modern-contract",
             "qbank-bulk-action",
             "tiny-toolbar-button",

@@ -47,7 +47,7 @@
       "plugin_type": "mod",
       "starting_fixture": "mod_momopda",
       "target_moodle": "4.5",
-      "prompt": "Add a required activity setting to new installations and an upgrade path that gives existing instances a safe default.",
+      "prompt": "Add a required per-instance mode setting to mod_momopda. Localize it through mod_momopda/mode, mod_momopda/modestandard, and mod_momopda/modeguided. Display it as a required select containing exactly Standard (1) and Guided (2), with no empty option and Standard selected by default. Persist submitted values when an activity is added or updated. On fresh installations, define momopda.mode as an integer of length 1, NOT NULL, with database default 1. Upgrade from plugin version 2026081900 to exactly 2026081901 by adding the same field only when absent so every existing activity receives 1, then call upgrade_mod_savepoint(true, 2026081901, 'momopda'). This setting does not require view changes.",
       "public_checks": ["plugin-ci", "fresh-install", "upgrade-install", "savepoint"]
     },
     {

@@ -303,14 +303,35 @@ class EvalHarnessTest(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(harness.HarnessError):
                 harness.safe_relative(value, "test")
 
+    def test_behavioral_phpunit_uses_only_public_assertion(self) -> None:
+        harness = load_harness_module()
+        plugin = self.root / "plugin"
+        submitted = plugin / "tests"
+        (submitted / "nested").mkdir(parents=True)
+        (submitted / "contracts_test.php").write_text("submitted\n", encoding="utf-8")
+        (submitted / "nested" / "helper.php").write_text("helper\n", encoding="utf-8")
+        assertion = self.root / "public_assertion.php"
+        assertion.write_text("public\n", encoding="utf-8")
+
+        harness.isolate_phpunit_assertion(plugin, assertion)
+
+        files = sorted(path.relative_to(submitted).as_posix() for path in submitted.rglob("*") if path.is_file())
+        self.assertEqual(["harness_contract_test.php"], files)
+        self.assertEqual("public\n", (submitted / "harness_contract_test.php").read_text(encoding="utf-8"))
+
     def test_generic_grader_dispatch_and_layout(self) -> None:
         harness = load_harness_module()
         self.assertEqual("test_modern_filter_class", harness.check_method_name("modern-filter-class"))
         self.assertEqual("test_semantic_insertion", harness.check_method_name("semantic-insertion"))
+        self.assertEqual("test_upgrade_install", harness.check_method_name("upgrade-install"))
         self.assertIn("node", harness.GRADING_PREREQUISITES)
         self.assertEqual(
             r"^qbank_momopda\\harness_contract_test::test_per_question_capability$",
             harness.phpunit_method_filter("qbank_momopda", "per-question-capability"),
+        )
+        self.assertEqual(
+            r"^mod_momopda\\harness_contract_test::test_savepoint$",
+            harness.phpunit_method_filter("mod_momopda", "savepoint"),
         )
         with self.assertRaises(harness.HarnessError):
             harness.check_method_name("plugin-ci")
@@ -378,7 +399,12 @@ class EvalHarnessTest(unittest.TestCase):
         tasks, _, _ = harness.load_contracts()
         graders = harness.load_graders(tasks)
         self.assertEqual(
-            {"filter-modern-contract", "qbank-bulk-action", "tiny-toolbar-button"},
+            {
+                "activity-schema-upgrade",
+                "filter-modern-contract",
+                "qbank-bulk-action",
+                "tiny-toolbar-button",
+            },
             set(graders),
         )
         expected = {

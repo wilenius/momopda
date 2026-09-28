@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-09-18",
+  "reviewed_on": "2026-09-24",
   "reviewed_moodle_source": {
     "revision": "acfa383c13dd46c83ca82894a8e95fac273fda33",
     "release": "5.2.2",
-    "comparison_tag": "v4.5.13"
+    "comparison_tag": "v4.5.13",
+    "comparison_revision": "8cbae18a2898cfd8266ec91ac206e12004f0ff5f"
   },
   "sources": [
     {
@@ -19,7 +20,17 @@
     },
     {
       "id": "activity-contract",
-      "core_paths": ["mod/page", "mod/label", "course/moodleform_mod.php"],
+      "core_paths": [
+        "mod/page",
+        "mod/label",
+        "mod/bigbluebuttonbn/db/upgrade.php",
+        "course/moodleform_mod.php",
+        "course/modlib.php",
+        "lib/upgradelib.php",
+        "lib/ddl/database_manager.php",
+        "lib/ddl/tests/ddl_test.php",
+        "lib/classes/plugininfo/base.php"
+      ],
       "fixture": "mod_momopda"
     },
     {

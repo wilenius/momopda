@@ -8,7 +8,9 @@ A conventional activity needs `version.php`, an English language file, `db/insta
 
 Moodle calls component-prefixed functions in `lib.php`, including add, update, delete, and feature-support callbacks. Add returns the new instance ID. Update receives the ID in `$data->instance`. Delete removes dependent data before the main row.
 
-The form extends `moodleform_mod` and includes the standard course-module elements. A view page resolves the course module and instance, requires course login and the view capability, sets the page URL/context, and formats stored content.
+The form extends `moodleform_mod` and includes the standard course-module elements. Define stored per-instance controls with localized labels, explicit parameter types, defaults, and validation. Matching fields in the activity's main-table row are supplied to edit forms; add and update callbacks must persist submitted values, with update receiving the ID in `$data->instance`.
+
+A view page resolves the course module and instance, requires course login and the view capability, sets the page URL/context, and formats stored content.
 
 ## Contract Pitfalls
 
@@ -18,4 +20,4 @@ The form extends `moodleform_mod` and includes the standard course-module elemen
 - Add gradebook, calendar, files, privacy, and events only when behavior requires them.
 - On Moodle 5.1+, the physical path is `public/mod/name`; the URL remains `/mod/name`.
 
-Core references: `mod/page`, `mod/label`, `course/moodleform_mod.php`.
+Core references: `mod/page`, `mod/label`, `course/moodleform_mod.php`, `course/modlib.php`, `lib/upgradelib.php`.

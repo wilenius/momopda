@@ -5,7 +5,7 @@ This document is the context-clear handoff for the modernization work started on
 ## Repository State
 
 - Branch: `feature/agent-skills-conversion`.
-- The current worktree completes the `tiny-toolbar-button` third public slice described below; it has not been committed or pushed.
+- Commit `f189890` completes the `tiny-toolbar-button` third public slice. The commit containing this handoff completes the `activity-schema-upgrade` fourth public slice described below; it has not been pushed.
 - The worktree may contain pre-existing user files. Inspect `git status` before editing, preserve later user changes, and do not reset or overwrite them.
 - The completed milestone commit has not been pushed. Do not add moving-branch or Moodle `main` canaries until the hosted pinned boundary jobs are green.
 - Do not restore the deleted old skill files or the tracked `tags` artifact.
@@ -311,13 +311,96 @@ All proof artifacts are under `/tmp/opencode/momopda-tiny-milestone-20260918`, o
 
 No grader was implemented, registered, tested, or containerized for `activity-schema-upgrade`, `local-external-function`, `qtype-safe-rendering`, `report-portable-query`, or `enrol-instance-ui`.
 
+## Completed Fourth Slice
+
+`activity-schema-upgrade` is now the fourth public vertical slice on pinned Moodle 4.5.13. No fifth grader, repeated comparison campaign, private holdout, moving-branch canary, or real-model sample was started.
+
+### Contract Freeze
+
+The contract was frozen on 24 September 2026 after inspecting Moodle `v4.5.13` at `8cbae18a2898cfd8266ec91ac206e12004f0ff5f`:
+
+> Add a required per-instance `mode` setting to `mod_momopda`. Localize it through `mod_momopda/mode`, `mod_momopda/modestandard`, and `mod_momopda/modeguided`. Display it as a required select containing exactly Standard (`1`) and Guided (`2`), with no empty option and Standard selected by default. Persist submitted values when an activity is added or updated. On fresh installations, define `momopda.mode` as an integer of length 1, `NOT NULL`, with database default `1`. Upgrade from plugin version `2026081900` to exactly `2026081901` by adding the same field only when absent so every existing activity receives `1`, then call `upgrade_mod_savepoint(true, 2026081901, 'momopda')`. This setting does not require view changes.
+
+The ordered public checks remain:
+
+```json
+[
+  "plugin-ci",
+  "fresh-install",
+  "upgrade-install",
+  "savepoint"
+]
+```
+
+Every prompt promise maps to executable behavior. The unchanged fixture stays at version `2026081900`, has no `mode` field or upgrade file, and remains the unsolved generation input.
+
+### Pinned Source Evidence
+
+The exact 4.5.13 contracts inspected were:
+
+- `lib/upgradelib.php`, including fresh module installation, module upgrade dispatch, and `upgrade_mod_savepoint()`
+- `lib/ddl/database_manager.php` and `lib/ddl/tests/ddl_test.php` for required-field defaults and existing-row backfill
+- `lib/classes/plugininfo/base.php` for disk/database version status
+- `course/moodleform_mod.php` and `course/modlib.php` for form data and add/update dispatch
+- `mod/page/mod_form.php` and `mod/page/lib.php` for stored activity settings
+- `mod/bigbluebuttonbn/db/upgrade.php` for a guarded required integer field and module savepoint
+
+This confirms that a fresh install reads `db/install.xml` without running `db/upgrade.php`, a required field added to a populated table needs a real default, module rows feed matching edit-form controls, add/update callbacks receive submitted data, and a plugin savepoint stores the component database version. `skills/moodle-plugin-development/references/type-activity.md`, `skills/moodle-plugin-development/references/database.md`, and `knowledge/sources.json` now contain only general source-backed guidance.
+
+### Grader And Isolation
+
+`evals/public/graders/activity-schema-upgrade/harness_contract_test.php` implements three exact PHPUnit methods:
+
+- `test_fresh_install` compares the submitted XMLDB definition with the installed PostgreSQL column, verifies the exact localized required select, default, option filtering and parameter type, checks disk/database version `2026081901`, and exercises add/update persistence.
+- `test_upgrade_install` drops the fresh field, inserts an exact old-schema row, sets component version `2026081900`, verifies `PLUGIN_STATUS_UPGRADE`, invokes the submitted upgrade, then checks the field definition, default backfill, and preservation of existing data.
+- `test_savepoint` invokes the submitted upgrade with the field already present and the database version reset to `2026081900`, proving both field-existence guarding and the plugin's own exact `mod_momopda` savepoint.
+
+PHPUnit discovers all component tests before applying a method filter. The activity fixture's shared integration test therefore exposed a generic isolation gap: it references fixtures absent from a single-plugin grade. After all non-fixing Plugin CI commands run against the complete candidate, the harness now replaces candidate test trees in both grading copies with only the selected public assertion. An offline test proves this boundary, and all four registered graders use it.
+
+### Disposable Worker
+
+`tools/activity-grader.Dockerfile` and `tools/run_activity_grader.sh` provide an activity-only worker with digest-pinned PHP 8.1, Composer 2, Node 22.11.0/npm 10.9.0, PostgreSQL client 15.19, Python 3.11, Moodle Plugin CI 4.5.11, and a fresh digest-pinned PostgreSQL 17.11 server.
+
+The runner accepts only `activity-schema-upgrade`; verifies Moodle `v4.5.13`, commit `8cbae18a2898cfd8266ec91ac206e12004f0ff5f`, PHP 8.1, Node/npm, PostgreSQL 17.11, the legacy repository-root layout, checkout-root CLI installer, and `mod/momopda` destination; mounts the repository read-only and only the external run root writable; uses container tmpfs; receives no provider credentials; drops all capabilities; sets `no-new-privileges`; and accepts only terminal `pass` or `fail` checks.
+
+### Deterministic Proof
+
+All proof artifacts are under `/tmp/opencode/momopda-activity-milestone-20260921`, outside the repository. Disposable grading trees and databases were removed by the runners; concise records, logs, external overlays, and the summary remain.
+
+- `activity-fixture-final`: the unchanged fixture passed Plugin CI, reached all four checks, and ended `fail` on the three missing behaviors.
+- `activity-known-good-final`: an external known-good implementation passed Plugin CI and all three runtime checks.
+- `mutation-wrong-fresh-default`, `mutation-missing-required-form`, and `mutation-nonpersistent-update` failed `fresh-install` while later checks passed.
+- `mutation-missing-upgrade-field` and `mutation-wrong-upgrade-default` failed only `upgrade-install`.
+- `mutation-unguarded-upgrade` failed only `savepoint`.
+- `mutation-missing-savepoint` passed both feature checks and failed Plugin CI plus the executable `savepoint` check.
+- Fresh `filter-regression`, `qbank-regression`, and `tiny-regression` runs reached every declared check and retained terminal `fail` semantics against the four-grader artifact.
+- `deterministic-summary.json`: 12 records, one pass, 11 expected failures, zero errors, zero incomplete runs, zero timeouts, and `ranking: null`.
+- No real-model sample was run.
+
+### Completed Acceptance
+
+- `graders.json` contains exactly four closed, versioned mappings with ordered checks matching their tasks.
+- Fresh-install schema, form contract, add/update persistence, old-row backfill, disk version, field guard, and exact savepoint are independently executable.
+- The canonical activity fixture is unchanged and unsolved.
+- The worker uses only pinned Moodle 4.5.13/PHP 8.1/Node 22/PostgreSQL 17.11 with unique mutable Moodledata and database state.
+- The unchanged fixture returns real outcomes, the external known-good passes, and seven targeted mutations are discriminated while later methods continue.
+- Candidate tests remain available to Plugin CI but cannot interfere with public behavioral assertions.
+- Filter, qbank, and Tiny behavior remains terminal and stable after the global artifact hash changed.
+- Generated workspaces, Moodle trees, records, logs, exemplars, and mutations remain outside the repository.
+- No credentials, hidden reasoning, assertion, or exemplar reached a generating agent.
+- No fifth grader or model campaign was started.
+
+### Scope Guard
+
+No grader was implemented, registered, tested, or containerized for `local-external-function`, `qtype-safe-rendering`, `report-portable-query`, or `enrol-instance-ui`.
+
 ## Next Milestone
 
-Implement `activity-schema-upgrade` as the fourth and only next public vertical slice on pinned Moodle 4.5.13. First freeze one deterministic fresh-install and upgrade contract against exact pinned core and the unsolved `mod_momopda` fixture. Do not register it until its assertion is executable, and do not start a fifth grader, comparison campaign, private holdout, moving-branch canary, or real-model sample in that slice.
+Implement `local-external-function` as the fifth and only next public vertical slice on pinned Moodle 5.2.2. First freeze one deterministic external-function contract against exact pinned core and the unsolved `local_momopda` fixture. Ensure parameter schema, context validation, capability enforcement, course visibility, and return schema each map to executable checks before registration. Do not start a sixth grader, comparison campaign, private holdout, moving-branch canary, or real-model sample in that slice.
 
 ## Later Milestones
 
-1. After `activity-schema-upgrade`, implement deterministic graders for the remaining four public tasks, one vertical slice at a time.
+1. After `local-external-function`, implement deterministic graders for the remaining three public tasks, one vertical slice at a time.
 2. Run repeated candidate/released/no-skill comparisons without ranking single samples.
 3. Create the separate private holdout repository for hidden prompts, tests, expected outcomes, and mutation cases.
 4. Add source-path change tracking for selected Moodle contracts.
@@ -339,4 +422,4 @@ Implement `activity-schema-upgrade` as the fourth and only next public vertical 
 
 Use this prompt after clearing context:
 
-> Read `docs/next-steps.md` and implement the `activity-schema-upgrade` Next Milestone only. Inspect the worktree before editing and preserve any user changes. First freeze one deterministic Moodle 4.5.13 contract for the required setting, fresh-install schema, form/save behavior, upgrade default, plugin version transition, and savepoint against exact pinned core and the unsolved `mod_momopda` fixture; ensure every prompt promise maps to an executable check before writing the grader. Keep all three existing graders and runners stable, add a separate credential-free PHP 8.1/PostgreSQL 17.11 worker, and register no fifth grader. Do not run real-model samples until the unchanged fixture returns a real pass/fail, an external known-good implementation passes, and targeted fresh-install/upgrade mutations fail as intended. Keep all generated workspaces, Moodle trees, records, logs, exemplars, and mutation candidates outside the repository, and carry the work through regression validation and an updated handoff.
+> Read `docs/next-steps.md` and implement the `local-external-function` Next Milestone only. Inspect the worktree before editing and preserve any user changes. First freeze one deterministic Moodle 5.2.2 contract for the external function name, parameter and return schemas, course lookup, context validation, capability, visibility, and exact summary result against pinned core and the unsolved `local_momopda` fixture; ensure every prompt promise maps to an executable check before writing the grader. Keep all four existing graders and runners stable, add a separate credential-free PHP 8.4/PostgreSQL 17.11 worker, and register no sixth grader. Do not run real-model samples until the unchanged fixture returns a real pass/fail, an external known-good implementation passes, and targeted schema/access mutations fail as intended. Keep all generated workspaces, Moodle trees, records, logs, exemplars, and mutation candidates outside the repository, and carry the work through regression validation and an updated handoff.

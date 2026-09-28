@@ -53,7 +53,7 @@ python3 -I -B tools/eval_harness.py run \
 
 The source checkout must be at the pinned commit declared in `knowledge/compatibility.json`. The harness creates a read-only detached clone for the agent, disables external skill discovery and plugins, isolates OpenCode configuration, and denies shell and network tools. It does not use `--auto`.
 
-The three registered graders select their assertion through `public/graders.json`. `filter-modern-contract` requires PHP 8.1 and Moodle 4.5.13; `qbank-bulk-action` and `tiny-toolbar-button` require PHP 8.4 and Moodle 5.2.2. All require Moodle Plugin CI 4.5.11, Composer 2, `node` with `npm`/`npx`, the PostgreSQL client, and an empty reachable PostgreSQL database server. Generated plugin code is untrusted and grading must run on a disposable CI worker or container with no provider credentials and no sensitive writable mounts. The harness strips the inherited environment, uses a dedicated home and temporary directory, rejects candidate-owned grader control files, and terminates timed-out process groups. It creates a unique database name and fresh Moodle, Moodledata, and plugin trees for every run:
+The four registered graders select their assertion through `public/graders.json`. `filter-modern-contract` and `activity-schema-upgrade` require PHP 8.1 and Moodle 4.5.13; `qbank-bulk-action` and `tiny-toolbar-button` require PHP 8.4 and Moodle 5.2.2. All require Moodle Plugin CI 4.5.11, Composer 2, `node` with `npm`/`npx`, the PostgreSQL client, and an empty reachable PostgreSQL database server. Generated plugin code is untrusted and grading must run on a disposable CI worker or container with no provider credentials and no sensitive writable mounts. The harness strips the inherited environment, uses a dedicated home and temporary directory, rejects candidate-owned grader control files, and terminates timed-out process groups. It creates a unique database name and fresh Moodle, Moodledata, and plugin trees for every run:
 
 ```bash
 python3 -I -B tools/eval_harness.py grade \
@@ -64,7 +64,7 @@ python3 -I -B tools/eval_harness.py grade \
     --db-pass moodle
 ```
 
-The grader runs no fixers. It executes PHP lint, coding style with zero warnings, plugin validation, PHPDoc with zero warnings, savepoints, and one exact PHPUnit method for every later declared check. The naming convention maps `check-id` to `harness_contract_test::test_check_id`. Every method runs even after an earlier behavioral failure. Missing prerequisites stay `incomplete`; installation failures are `error`; assertion and Plugin CI failures are `fail`.
+The grader runs no fixers. It executes PHP lint, coding style with zero warnings, plugin validation, PHPDoc with zero warnings, savepoints, and one exact PHPUnit method for every later declared check. Candidate tests remain present for Plugin CI, then the behavioral boundary replaces both copied test trees with only the selected public assertion so submitted tests cannot interfere with discovery. The naming convention maps `check-id` to `harness_contract_test::test_check_id`. Every method runs even after an earlier behavioral failure. Missing prerequisites stay `incomplete`; installation failures are `error`; assertion and Plugin CI failures are `fail`.
 
 The first-slice Docker runner provisions those tools together and starts a fresh digest-pinned PostgreSQL 17.11 server. It mounts the repository read-only, mounts only the external run directory writable, does not receive the host environment or provider credentials, and rejects `error` or `incomplete` grades:
 
@@ -102,6 +102,21 @@ python3 -I -B tools/eval_harness.py run \
     --run-dir "$run" \
     --client fake
 tools/run_tiny_grader.sh "$run"
+python3 -I -B tools/eval_harness.py validate "$run"
+```
+
+The fourth runner returns to the pinned Moodle 4.5.13/PHP 8.1 boundary and accepts only `activity-schema-upgrade`. Its runtime checks compare the fresh XMLDB schema with the installed table, exercise the localized required form control and add/update persistence, recreate the exact previous schema with an existing row, and invoke the submitted upgrade both with the field absent and already present to prove backfill, version transition, guarding, and the plugin's own savepoint:
+
+```bash
+run=/tmp/momopda-evals/activity-fake-001
+python3 -I -B tools/eval_harness.py prepare \
+    --task activity-schema-upgrade \
+    --condition none \
+    --output "$run"
+python3 -I -B tools/eval_harness.py run \
+    --run-dir "$run" \
+    --client fake
+tools/run_activity_grader.sh "$run"
 python3 -I -B tools/eval_harness.py validate "$run"
 ```
 

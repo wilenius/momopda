@@ -4,7 +4,9 @@
 
 Create and edit `db/install.xml` with Moodle XMLDB conventions. Keep table and field names within Moodle limits, define keys and useful indexes, and avoid database-specific types or expressions.
 
-The install schema describes a fresh installation only. Released schema changes also require an idempotent step in `db/upgrade.php` and a matching savepoint.
+The install schema describes a fresh installation only; Moodle does not run a plugin's upgrade steps while installing it. Released schema changes also require an idempotent step in `db/upgrade.php` and a matching savepoint. Keep the final field definition in both paths identical.
+
+When adding a required field to a populated table, provide a portable database default so existing rows can be backfilled by XMLDB. Test both a fresh installation and an upgrade from the exact previous schema with existing data.
 
 ## DML
 

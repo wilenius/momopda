@@ -28,6 +28,11 @@
         "semantic-insertion"
       ],
       "assertion": "evals/public/graders/tiny-toolbar-button/harness_contract_test.php"
+    },
+    "activity-schema-upgrade": {
+      "version": 1,
+      "checks": ["plugin-ci", "fresh-install", "upgrade-install", "savepoint"],
+      "assertion": "evals/public/graders/activity-schema-upgrade/harness_contract_test.php"
     }
   }
 }
